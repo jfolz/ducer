@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.22.1" }
 fst = "0.4.7"
+ouroboros = "0.18.4"
 
 [profile.release]
 strip = true      # Automatically strip symbols from the binary.

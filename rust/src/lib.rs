@@ -1,4 +1,5 @@
-use fst::{Map, MapBuilder};
+use fst::{map::Stream, Map, MapBuilder, Streamer};
+use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
     exceptions::PyBufferError,
@@ -12,6 +13,7 @@ use std::{
     io::{self, BufWriter},
     os::raw::{c_int, c_void},
     ptr,
+    sync::Arc,
 };
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
@@ -95,6 +97,8 @@ struct UnsafeRef {
 
 unsafe impl Send for UnsafeRef {}
 
+unsafe impl Sync for UnsafeRef {}
+
 impl AsRef<[u8]> for UnsafeRef {
     fn as_ref(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
@@ -104,7 +108,47 @@ impl AsRef<[u8]> for UnsafeRef {
 #[pyclass]
 struct FstMap {
     view: PyBuffer<u8>,
-    inner: Map<UnsafeRef>,
+    inner: Arc<Map<UnsafeRef>>,
+}
+
+#[pymethods]
+impl FstMap {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<FstMapIterator>> {
+        let iter = FstMapIteratorBuilder {
+            map: slf.inner.clone(),
+            stream_builder: |map| map.stream(),
+        }
+        .build();
+        Py::new(slf.py(), iter)
+    }
+}
+
+#[pyclass]
+#[self_referencing]
+struct FstMapIterator {
+    map: Arc<Map<UnsafeRef>>,
+    #[borrows(map)]
+    #[not_covariant]
+    stream: Stream<'this>,
+}
+
+#[pymethods]
+impl FstMapIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        let py = slf.py();
+        match slf.with_stream_mut(|stream| stream.next()) {
+            Some((key, val)) => {
+                let kv = [key.to_object(py), val.to_object(py)];
+                let t = PyTuple::new_bound(py, kv);
+                Some(t.into_py(py))
+            }
+            None => None,
+        }
+    }
 }
 
 fn fill_map<'py, W: io::Write>(
@@ -167,8 +211,10 @@ fn open_map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
         ptr: view.buf_ptr() as *const u8,
         len: view.len_bytes(),
     };
-    let inner = Map::new(slice)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
+    let inner = Arc::new(
+        Map::new(slice)
+            .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?,
+    );
     Ok(FstMap { view, inner })
 }
 
