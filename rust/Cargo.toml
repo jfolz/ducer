@@ -9,7 +9,7 @@ name = "_fst"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22.1", features = ["extension-module"] }
+pyo3 = { version = "0.22.1" }
 fst = "0.4.7"
 
 [profile.release]
