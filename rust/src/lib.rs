@@ -1,15 +1,17 @@
-use fst::{Map, MapBuilder, Set, SetBuilder, Streamer};
-use pyo3::buffer::PyBuffer;
-use pyo3::exceptions::PyBufferError;
-use pyo3::types::{PyBytes, PyMemoryView, PyTuple};
-use pyo3::{ffi, prelude::*};
-use std::ffi::CString;
-use std::os::raw::{c_int, c_void};
-use std::ptr;
-use std::sync::Arc;
+use fst::{Map, MapBuilder};
+use pyo3::{
+    buffer::PyBuffer,
+    exceptions::PyBufferError,
+    ffi,
+    prelude::*,
+    types::{PyBytes, PyTuple},
+};
 use std::{
+    ffi::CString,
     fs,
     io::{self, BufWriter},
+    os::raw::{c_int, c_void},
+    ptr,
 };
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
@@ -86,10 +88,23 @@ impl VecBuffer {
     }
 }
 
+struct UnsafeRef {
+    ptr: *const u8,
+    len: usize,
+}
+
+unsafe impl Send for UnsafeRef {}
+
+impl AsRef<[u8]> for UnsafeRef {
+    fn as_ref(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
 #[pyclass]
-struct PyMap {
+struct FstMap {
     view: PyBuffer<u8>,
-    inner: Map<Arc<[u8]>>,
+    inner: Map<UnsafeRef>,
 }
 
 fn fill_map<'py, W: io::Write>(
@@ -145,20 +160,16 @@ fn build_map<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<Option<V
 
 /// Open an FST map.
 #[pyfunction]
-fn open_map<'py>(data: &Bound<'py, PyAny>) -> PyResult<PyMap> {
+fn open_map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
     let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
     // TODO test view.is_c_contiguous()
-    let ptr = view.buf_ptr();
-    // TODO arc should probably not try to delete this memory?
-    let slice: Arc<[u8]> = unsafe {
-        Arc::from_raw(std::slice::from_raw_parts(
-            ptr as *const u8,
-            view.len_bytes(),
-        ))
+    let slice = UnsafeRef {
+        ptr: view.buf_ptr() as *const u8,
+        len: view.len_bytes(),
     };
     let inner = Map::new(slice)
         .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-    Ok(PyMap { view, inner })
+    Ok(FstMap { view, inner })
 }
 
 /// A Python module implemented in Rust.
