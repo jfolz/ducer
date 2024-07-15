@@ -142,8 +142,9 @@ impl FstMapIterator {
         let py = slf.py();
         match slf.with_stream_mut(|stream| stream.next()) {
             Some((key, val)) => {
-                let kv = [key.to_object(py), val.to_object(py)];
-                let t = PyTuple::new_bound(py, kv);
+                let k = PyBytes::new_bound(py, key).into_py(py);
+                let v = val.to_object(py);
+                let t = PyTuple::new_bound(py, [k, v]);
                 Some(t.into_py(py))
             }
             None => None,
