@@ -1,0 +1,18 @@
+[package]
+name = "_fst"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "_fst"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22.1", features = ["extension-module"] }
+fst = "0.4.7"
+
+[profile.release]
+strip = true      # Automatically strip symbols from the binary.
+lto = true        # Enable LTO
+codegen-units = 1 # Can enable additional optimizations
