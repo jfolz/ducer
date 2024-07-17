@@ -60,7 +60,7 @@ fn decode_int<'py>(py: Python<'py>, data: &[u8]) -> PyResult<Bound<'py, PyTuple>
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
 #[pyclass]
-struct VecBuffer {
+struct Buffer {
     data: Vec<u8>,
 }
 
@@ -117,7 +117,7 @@ unsafe fn fill_view_from_readonly_data(
 }
 
 #[pymethods]
-impl VecBuffer {
+impl Buffer {
     unsafe fn __getbuffer__(
         slf: Bound<'_, Self>,
         view: *mut ffi::Py_buffer,
@@ -161,6 +161,14 @@ impl FstMap {
         }
         .build();
         Py::new(slf.py(), iter)
+    }
+
+    fn __getitem__(&self, key: &[u8]) -> Option<u64> {
+        self.inner.get(key)
+    }
+
+    fn __contains__(&self, key: &[u8]) -> bool {
+        self.inner.contains_key(key)
     }
 }
 
@@ -218,15 +226,15 @@ fn fill_map<'py, W: io::Write>(
         .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
 }
 
-/// Build an FST map.
+/// Build an FST map from an iterable for tuples (key: bytes, value: int).
 #[pyfunction]
-fn build_map<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<Option<VecBuffer>> {
+fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<Option<Buffer>> {
     if path == ":memory:" {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = MapBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
         let w = fill_map(iterable, builder)?;
-        let ret = VecBuffer { data: w };
+        let ret = Buffer { data: w };
         Ok(Some(ret))
     } else {
         let wp = fs::OpenOptions::new()
@@ -246,7 +254,7 @@ fn build_map<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<Option<V
 
 /// Open an FST map.
 #[pyfunction]
-fn open_map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
+fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
     let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
     // TODO test view.is_c_contiguous()
     let slice = UnsafeRef {
@@ -263,10 +271,10 @@ fn open_map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
 /// A Python module implemented in Rust.
 #[pymodule]
 fn _fst(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<VecBuffer>()?;
+    m.add_class::<Buffer>()?;
     m.add_function(wrap_pyfunction!(encode_int, m)?)?;
     m.add_function(wrap_pyfunction!(decode_int, m)?)?;
-    m.add_function(wrap_pyfunction!(build_map, m)?)?;
-    m.add_function(wrap_pyfunction!(open_map, m)?)?;
+    m.add_function(wrap_pyfunction!(map_from_iterable, m)?)?;
+    m.add_function(wrap_pyfunction!(map, m)?)?;
     Ok(())
 }
