@@ -8,6 +8,7 @@ use pyo3::{
 use std::{
     fs,
     io::{self, BufWriter},
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -98,9 +99,9 @@ fn fill_map<'py, W: io::Write>(
 #[pyfunction]
 pub fn map_from_iterable<'py>(
     iterable: &Bound<'py, PyAny>,
-    path: &str,
+    path: PathBuf,
 ) -> PyResult<Option<Buffer>> {
-    if path == ":memory:" {
+    if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::MapBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
