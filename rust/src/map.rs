@@ -16,7 +16,7 @@ use crate::buffer::{Buffer, PyBufferRef};
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
 #[pyclass]
-struct Map {
+pub struct Map {
     inner: Arc<fst::Map<PyBufferRef<u8>>>,
 }
 
