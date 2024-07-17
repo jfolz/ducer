@@ -12,7 +12,7 @@ use std::{
 };
 
 mod buffer;
-use buffer::Buffer;
+use buffer::{Buffer, BufferRef};
 
 #[pyfunction]
 fn encode_int<'py>(py: Python<'py>, i: u64) -> PyResult<Bound<'py, PyBytes>> {
@@ -57,25 +57,9 @@ fn decode_int<'py>(py: Python<'py>, data: &[u8]) -> PyResult<Bound<'py, PyTuple>
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
-struct UnsafeRef {
-    ptr: *const u8,
-    len: usize,
-}
-
-unsafe impl Send for UnsafeRef {}
-
-unsafe impl Sync for UnsafeRef {}
-
-impl AsRef<[u8]> for UnsafeRef {
-    fn as_ref(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
-    }
-}
-
 #[pyclass]
 struct Map {
-    view: PyBuffer<u8>,
-    inner: Arc<fst::Map<UnsafeRef>>,
+    inner: Arc<fst::Map<BufferRef>>,
 }
 
 #[pymethods]
@@ -101,7 +85,7 @@ impl Map {
 #[pyclass]
 #[self_referencing]
 struct FstMapIterator {
-    map: Arc<fst::Map<UnsafeRef>>,
+    map: Arc<fst::Map<BufferRef>>,
     #[borrows(map)]
     #[not_covariant]
     stream: Stream<'this>,
@@ -182,16 +166,12 @@ fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<
 #[pyfunction]
 fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
     let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
-    // TODO test view.is_c_contiguous()
-    let slice = UnsafeRef {
-        ptr: view.buf_ptr() as *const u8,
-        len: view.len_bytes(),
-    };
+    let slice = BufferRef::new(view);
     let inner = Arc::new(
         fst::Map::new(slice)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?,
     );
-    Ok(Map { view, inner })
+    Ok(Map { inner })
 }
 
 /// A Python module implemented in Rust.
