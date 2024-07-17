@@ -28,7 +28,6 @@ impl Buffer {
         view: *mut ffi::Py_buffer,
         flags: c_int,
     ) -> PyResult<()> {
-        //fill_view_from_readonly_data(view, flags, &slf.borrow().data, slf.into_any())
         if view.is_null() {
             return Err(PyBufferError::new_err("Py_buffer must not be null"));
         }
