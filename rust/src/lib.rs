@@ -65,7 +65,7 @@ struct Map {
 #[pymethods]
 impl Map {
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<MapIterator>> {
-        let iter = MapIterator {
+        let iter = MapIteratorBuilder {
             map: slf.inner.clone(),
             stream_builder: |map| map.stream(),
         }
