@@ -4,8 +4,6 @@ use pyo3::{
 };
 
 mod buffer;
-use buffer::Buffer;
-
 mod map;
 
 #[pyfunction]
@@ -52,7 +50,7 @@ fn decode_int<'py>(py: Python<'py>, data: &[u8]) -> PyResult<Bound<'py, PyTuple>
 /// A Python module implemented in Rust.
 #[pymodule]
 fn _fst(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<Buffer>()?;
+    m.add_class::<buffer::Buffer>()?;
     m.add_function(wrap_pyfunction!(encode_int, m)?)?;
     m.add_function(wrap_pyfunction!(decode_int, m)?)?;
     m.add_function(wrap_pyfunction!(map::map_from_iterable, m)?)?;
