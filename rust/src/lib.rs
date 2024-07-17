@@ -12,7 +12,7 @@ use std::{
 };
 
 mod buffer;
-use buffer::{Buffer, BufferRef};
+use buffer::{Buffer, PyBufferRef};
 
 #[pyfunction]
 fn encode_int<'py>(py: Python<'py>, i: u64) -> PyResult<Bound<'py, PyBytes>> {
@@ -59,7 +59,7 @@ const BUFSIZE: usize = 4 * 1024 * 1024;
 
 #[pyclass]
 struct Map {
-    inner: Arc<fst::Map<BufferRef>>,
+    inner: Arc<fst::Map<PyBufferRef>>,
 }
 
 #[pymethods]
@@ -85,7 +85,7 @@ impl Map {
 #[pyclass]
 #[self_referencing]
 struct FstMapIterator {
-    map: Arc<fst::Map<BufferRef>>,
+    map: Arc<fst::Map<PyBufferRef>>,
     #[borrows(map)]
     #[not_covariant]
     stream: Stream<'this>,
@@ -166,7 +166,7 @@ fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<
 #[pyfunction]
 fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
     let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
-    let slice = BufferRef::new(view);
+    let slice = PyBufferRef::new(view);
     let inner = Arc::new(
         fst::Map::new(slice)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?,
