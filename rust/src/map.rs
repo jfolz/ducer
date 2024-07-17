@@ -77,15 +77,30 @@ fn fill_map<'py, W: io::Write>(
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
-        let tuple = obj.downcast::<PyTuple>()?;
-        if tuple.len() != 2 {
-            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Expected tuple (key: bytes, value: int)",
-            ));
-        }
-        let item0 = tuple.get_item(0)?;
-        let key = item0.downcast::<PyBytes>()?.as_bytes();
-        let val = tuple.get_item(1)?.extract::<u64>()?;
+
+        let item0;
+        let (key, val) = if let Ok(tuple) = obj.downcast::<PyTuple>() {
+            let items = tuple.as_slice();
+            if items.len() != 2 {
+                return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                    "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
+                ));
+            }
+            let key = items[0].extract::<&[u8]>()?;
+            let val = items[1].extract::<u64>()?;
+            (key, val)
+        } else {
+            if obj.len()? != 2 {
+                return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                    "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
+                ));
+            }
+            item0 = obj.get_item(0)?;
+            let key = item0.extract::<&[u8]>()?;
+            let val = obj.get_item(1)?.extract::<u64>()?;
+            (key, val)
+        };
+
         builder
             .insert(key, val)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))?;
