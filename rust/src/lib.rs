@@ -1,4 +1,4 @@
-use fst::{map::Stream, Map, MapBuilder, Streamer};
+use fst::{map::Stream, Streamer};
 use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
@@ -147,13 +147,13 @@ impl AsRef<[u8]> for UnsafeRef {
 }
 
 #[pyclass]
-struct FstMap {
+struct Map {
     view: PyBuffer<u8>,
-    inner: Arc<Map<UnsafeRef>>,
+    inner: Arc<fst::Map<UnsafeRef>>,
 }
 
 #[pymethods]
-impl FstMap {
+impl Map {
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<FstMapIterator>> {
         let iter = FstMapIteratorBuilder {
             map: slf.inner.clone(),
@@ -175,7 +175,7 @@ impl FstMap {
 #[pyclass]
 #[self_referencing]
 struct FstMapIterator {
-    map: Arc<Map<UnsafeRef>>,
+    map: Arc<fst::Map<UnsafeRef>>,
     #[borrows(map)]
     #[not_covariant]
     stream: Stream<'this>,
@@ -203,7 +203,7 @@ impl FstMapIterator {
 
 fn fill_map<'py, W: io::Write>(
     iterable: &Bound<'py, PyAny>,
-    mut builder: MapBuilder<W>,
+    mut builder: fst::MapBuilder<W>,
 ) -> PyResult<W> {
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
@@ -231,7 +231,7 @@ fn fill_map<'py, W: io::Write>(
 fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<Option<Buffer>> {
     if path == ":memory:" {
         let buf = Vec::with_capacity(10 * (1 << 10));
-        let builder = MapBuilder::new(buf)
+        let builder = fst::MapBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
         let w = fill_map(iterable, builder)?;
         let ret = Buffer { data: w };
@@ -245,7 +245,7 @@ fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<
         let writer = BufWriter::with_capacity(BUFSIZE, wp);
         fill_map(
             iterable,
-            MapBuilder::new(writer)
+            fst::MapBuilder::new(writer)
                 .map_err(|err| PyErr::new::<pyo3::exceptions::PyTypeError, _>(err.to_string()))?,
         )?;
         Ok(None)
@@ -254,7 +254,7 @@ fn map_from_iterable<'py>(iterable: &Bound<'py, PyAny>, path: &str) -> PyResult<
 
 /// Open an FST map.
 #[pyfunction]
-fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
+fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
     let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
     // TODO test view.is_c_contiguous()
     let slice = UnsafeRef {
@@ -262,10 +262,10 @@ fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<FstMap> {
         len: view.len_bytes(),
     };
     let inner = Arc::new(
-        Map::new(slice)
+        fst::Map::new(slice)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?,
     );
-    Ok(FstMap { view, inner })
+    Ok(Map { view, inner })
 }
 
 /// A Python module implemented in Rust.
