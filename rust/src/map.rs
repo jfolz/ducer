@@ -39,6 +39,10 @@ impl Map {
     fn __contains__(&self, key: &[u8]) -> bool {
         self.inner.contains_key(key)
     }
+
+    fn __len__(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 #[pyclass]
