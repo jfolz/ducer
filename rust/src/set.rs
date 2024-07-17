@@ -24,7 +24,7 @@ impl Set {
     /// e.g., `bytes`, `memoryview`, `mmap`, etc.
     /// Important: `data` needs to be contiguous.
     #[new]
-    fn new<'py>(data: &Bound<'py, PyAny>) -> PyResult<Set> {
+    fn init<'py>(data: &Bound<'py, PyAny>) -> PyResult<Set> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner =

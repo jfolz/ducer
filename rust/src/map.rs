@@ -28,7 +28,7 @@ impl Map {
     /// e.g., `bytes`, `memoryview`, `mmap`, etc.
     /// Important: `data` needs to be contiguous.
     #[new]
-    fn new<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
+    fn init<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner =
