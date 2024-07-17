@@ -90,8 +90,16 @@ pub struct PyBufferRef<T: Element> {
 }
 
 impl<T: Element> PyBufferRef<T> {
-    pub fn new(view: PyBuffer<T>) -> Self {
-        Self { view }
+    /// Create a new `PyBufferRef` from the given `PyBuffer`.
+    /// Returns PyValueError if buffer is not contiguous.
+    pub fn new(view: PyBuffer<T>) -> PyResult<Self> {
+        if !(view.is_c_contiguous() || view.is_fortran_contiguous()) {
+            Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "buffer must be contiguous",
+            ))
+        } else {
+            Ok(Self { view })
+        }
     }
 }
 
