@@ -23,6 +23,21 @@ pub struct Map {
 
 #[pymethods]
 impl Map {
+    /// Create a `Map` from the given data.
+    /// `data` can be any object that supports the buffer protocol,
+    /// e.g., `bytes`, `memoryview`, `mmap`, etc.
+    /// Important: `data` needs to be contiguous.
+    #[new]
+    fn new<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
+        let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
+        let slice = PyBufferRef::new(view)?;
+        let inner =
+            Arc::new(fst::Map::new(slice).map_err(|err| {
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string())
+            })?);
+        Ok(Self { inner })
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<MapIterator>> {
         let iter = MapIteratorBuilder {
             map: slf.inner.clone(),
@@ -114,12 +129,11 @@ fn fill_map<'py, W: io::Write>(
         .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
 }
 
-/// Build an FST map from an iterable for tuples (key: bytes, value: int).
+/// Build a Map from an iterable of items `(key: bytes, value: int)`
+/// and write it to the given path.
+/// If path is `:memory:`, returns a `Buffer` containing the map data.
 #[pyfunction]
-pub fn map_from_iterable<'py>(
-    iterable: &Bound<'py, PyAny>,
-    path: PathBuf,
-) -> PyResult<Option<Buffer>> {
+pub fn build_map<'py>(iterable: &Bound<'py, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::MapBuilder::new(buf)
@@ -141,16 +155,4 @@ pub fn map_from_iterable<'py>(
         )?;
         Ok(None)
     }
-}
-
-/// Open an FST map.
-#[pyfunction]
-pub fn map<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
-    let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
-    let slice = PyBufferRef::new(view)?;
-    let inner = Arc::new(
-        fst::Map::new(slice)
-            .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?,
-    );
-    Ok(Map { inner })
 }
