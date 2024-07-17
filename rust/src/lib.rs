@@ -59,7 +59,7 @@ const BUFSIZE: usize = 4 * 1024 * 1024;
 
 #[pyclass]
 struct Map {
-    inner: Arc<fst::Map<PyBufferRef>>,
+    inner: Arc<fst::Map<PyBufferRef<u8>>>,
 }
 
 #[pymethods]
@@ -85,7 +85,7 @@ impl Map {
 #[pyclass]
 #[self_referencing]
 struct MapIterator {
-    map: Arc<fst::Map<PyBufferRef>>,
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
     #[borrows(map)]
     #[not_covariant]
     stream: Stream<'this>,
