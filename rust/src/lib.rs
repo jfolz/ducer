@@ -64,8 +64,8 @@ struct Map {
 
 #[pymethods]
 impl Map {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<FstMapIterator>> {
-        let iter = FstMapIteratorBuilder {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<MapIterator>> {
+        let iter = MapIterator {
             map: slf.inner.clone(),
             stream_builder: |map| map.stream(),
         }
@@ -84,7 +84,7 @@ impl Map {
 
 #[pyclass]
 #[self_referencing]
-struct FstMapIterator {
+struct MapIterator {
     map: Arc<fst::Map<PyBufferRef>>,
     #[borrows(map)]
     #[not_covariant]
@@ -92,7 +92,7 @@ struct FstMapIterator {
 }
 
 #[pymethods]
-impl FstMapIterator {
+impl MapIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
