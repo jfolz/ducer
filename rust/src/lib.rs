@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-mod automaton;
+//mod automaton;
 mod buffer;
 mod encoding;
 mod map;

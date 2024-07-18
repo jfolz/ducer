@@ -1,4 +1,8 @@
-use fst::{map::Stream, Streamer};
+use fst::{
+    automaton::{AlwaysMatch, Automaton, StartsWith, Str},
+    map::Stream,
+    IntoStreamer, Streamer,
+};
 use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
@@ -12,7 +16,50 @@ use std::{
     sync::Arc,
 };
 
+//use crate::automaton::{StartsWithAutomata, StrAutomata};
 use crate::buffer::{Buffer, PyBufferRef};
+
+macro_rules! define_iterators {
+    ($($name:ident $generic:ty),* $(,)?) => {
+        $(
+            #[pyclass]
+            #[self_referencing]
+            struct $name {
+                map: Arc<fst::Map<PyBufferRef<u8>>>,
+                str: String,
+                #[borrows(map, str)]
+                #[not_covariant]
+                stream: Stream<'this, $generic>,
+            }
+
+            #[pymethods]
+            impl $name {
+                fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                    slf
+                }
+
+                fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+                    let py = slf.py();
+                    match &slf.with_stream_mut(|stream| stream.next()) {
+                        Some((key, val)) => {
+                            let k = PyBytes::new_bound(py, key).into_py(py);
+                            let v = val.to_object(py);
+                            let t = PyTuple::new_bound(py, [k, v]);
+                            Some(t.into_py(py))
+                        }
+                        None => None,
+                    }
+                }
+            }
+        )*
+    };
+}
+
+// Use the macro to define multiple structs
+define_iterators!(
+    MapIterator AlwaysMatch,
+    MapStartsWithIterator StartsWith<Str<'this>>,
+);
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
@@ -41,7 +88,8 @@ impl Map {
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<MapIterator>> {
         let iter = MapIteratorBuilder {
             map: slf.inner.clone(),
-            stream_builder: |map| map.stream(),
+            str: "".to_owned(),
+            stream_builder: |map, _| map.stream(),
         }
         .build();
         Py::new(slf.py(), iter)
@@ -58,34 +106,14 @@ impl Map {
     fn __len__(&self) -> usize {
         self.inner.len()
     }
-}
 
-#[pyclass]
-#[self_referencing]
-struct MapIterator {
-    map: Arc<fst::Map<PyBufferRef<u8>>>,
-    #[borrows(map)]
-    #[not_covariant]
-    stream: Stream<'this>,
-}
-
-#[pymethods]
-impl MapIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-        let py = slf.py();
-        match slf.with_stream_mut(|stream| stream.next()) {
-            Some((key, val)) => {
-                let k = PyBytes::new_bound(py, key).into_py(py);
-                let v = val.to_object(py);
-                let t = PyTuple::new_bound(py, [k, v]);
-                Some(t.into_py(py))
-            }
-            None => None,
+    fn starts_with(&self, str: String) -> MapStartsWithIterator {
+        MapStartsWithIteratorBuilder {
+            map: self.inner.clone(),
+            str,
+            stream_builder: |map, str| map.search(Str::new(str).starts_with()).into_stream(),
         }
+        .build()
     }
 }
 
