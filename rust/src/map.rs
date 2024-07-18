@@ -1,5 +1,5 @@
 use fst::{
-    automaton::{AlwaysMatch, Automaton, StartsWith, Str},
+    automaton::{AlwaysMatch, Automaton, StartsWith, Str, Subsequence},
     map::Stream,
     IntoStreamer, Streamer,
 };
@@ -59,6 +59,7 @@ macro_rules! define_iterators {
 define_iterators!(
     MapIterator AlwaysMatch,
     MapStartsWithIterator StartsWith<Str<'this>>,
+    MapSubsequenceIterator Subsequence<'this>,
 );
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
@@ -112,6 +113,15 @@ impl Map {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| map.search(Str::new(str).starts_with()).into_stream(),
+        }
+        .build()
+    }
+
+    fn subsequence(&self, str: String) -> MapSubsequenceIterator {
+        MapSubsequenceIteratorBuilder {
+            map: self.inner.clone(),
+            str,
+            stream_builder: |map, str| map.search(Subsequence::new(str)).into_stream(),
         }
         .build()
     }
