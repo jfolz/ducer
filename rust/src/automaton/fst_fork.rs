@@ -5,19 +5,25 @@ pub use self::levenshtein::{Levenshtein, LevenshteinError};
 mod levenshtein;
 
 use fst::Automaton;
+use pyo3::prelude::*;
+use std::sync::Arc;
 
+#[inline]
 fn str_start() -> State {
     State::Str(Some(0))
 }
 
+#[inline]
 fn str_is_match(str: &[u8], pos: &Option<usize>) -> bool {
     *pos == Some(str.len())
 }
 
+#[inline]
 fn str_can_match(pos: &Option<usize>) -> bool {
     pos.is_some()
 }
 
+#[inline]
 fn str_accept(str: &[u8], pos: &Option<usize>, byte: u8) -> State {
     // if we aren't already past the end...
     if let Some(pos) = *pos {
@@ -31,22 +37,27 @@ fn str_accept(str: &[u8], pos: &Option<usize>, byte: u8) -> State {
     State::Str(None)
 }
 
+#[inline]
 fn subsequence_start() -> State {
     State::Subsequence(0)
 }
 
+#[inline]
 fn subsequence_is_match(node: &[u8], &state: &usize) -> bool {
     state == node.len()
 }
 
+#[inline]
 fn subsequence_can_match() -> bool {
     true
 }
 
+#[inline]
 fn subsequence_will_always_match(node: &[u8], &state: &usize) -> bool {
     state == node.len()
 }
 
+#[inline]
 fn subsequence_accept(node: &[u8], &state: &usize, byte: u8) -> State {
     if state == node.len() {
         return State::Subsequence(state);
@@ -54,22 +65,27 @@ fn subsequence_accept(node: &[u8], &state: &usize, byte: u8) -> State {
     State::Subsequence(state + (byte == node[state]) as usize)
 }
 
+#[inline]
 fn alwaysmatch_start() -> State {
     State::AlwaysMatch
 }
 
+#[inline]
 fn alwaysmatch_is_match() -> bool {
     true
 }
 
+#[inline]
 fn alwaysmatch_can_match() -> bool {
     true
 }
 
+#[inline]
 fn alwaysmatch_will_always_match() -> bool {
     true
 }
 
+#[inline]
 fn alwaysmatch_accept() -> State {
     State::AlwaysMatch
 }
@@ -80,6 +96,7 @@ enum StartsWithState {
     Running(State),
 }
 
+#[inline]
 fn starts_with_start(node: &GraphAutomaton) -> State {
     State::StartsWith(Box::new({
         let inner = node.start();
@@ -91,6 +108,7 @@ fn starts_with_start(node: &GraphAutomaton) -> State {
     }))
 }
 
+#[inline]
 fn starts_with_is_match(state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
@@ -98,6 +116,7 @@ fn starts_with_is_match(state: &StartsWithState) -> bool {
     }
 }
 
+#[inline]
 fn starts_with_can_match(node: &GraphAutomaton, state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
@@ -105,6 +124,7 @@ fn starts_with_can_match(node: &GraphAutomaton, state: &StartsWithState) -> bool
     }
 }
 
+#[inline]
 fn starts_with_will_always_match(state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
@@ -112,6 +132,7 @@ fn starts_with_will_always_match(state: &StartsWithState) -> bool {
     }
 }
 
+#[inline]
 fn starts_with_accept(node: &GraphAutomaton, state: &StartsWithState, byte: u8) -> State {
     State::StartsWith(Box::new(match state {
         StartsWithState::Done => StartsWithState::Done,
@@ -129,27 +150,32 @@ fn starts_with_accept(node: &GraphAutomaton, state: &StartsWithState, byte: u8) 
 #[derive(Debug)]
 pub struct UnionState(State, State);
 
-fn union_start(node: &Box<(GraphAutomaton, GraphAutomaton)>) -> State {
+#[inline]
+fn union_start(node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>)) -> State {
     State::Union(Box::new(UnionState(node.0.start(), node.1.start())))
 }
 
-fn union_is_match(node: &Box<(GraphAutomaton, GraphAutomaton)>, state: &UnionState) -> bool {
+#[inline]
+fn union_is_match(node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>), state: &UnionState) -> bool {
     node.0.is_match(&state.0) || node.1.is_match(&state.1)
 }
 
-fn union_can_match(node: &Box<(GraphAutomaton, GraphAutomaton)>, state: &UnionState) -> bool {
+#[inline]
+fn union_can_match(node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>), state: &UnionState) -> bool {
     node.0.can_match(&state.0) || node.1.can_match(&state.1)
 }
 
+#[inline]
 fn union_will_always_match(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &UnionState,
 ) -> bool {
     node.0.will_always_match(&state.0) || node.1.will_always_match(&state.1)
 }
 
+#[inline]
 fn union_accept(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &UnionState,
     byte: u8,
 ) -> State {
@@ -162,34 +188,39 @@ fn union_accept(
 #[derive(Debug)]
 pub struct IntersectionState(State, State);
 
-fn intersection_start(node: &Box<(GraphAutomaton, GraphAutomaton)>) -> State {
+#[inline]
+fn intersection_start(node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>)) -> State {
     let s = Box::new(IntersectionState(node.0.start(), node.1.start()));
     State::Intersection(s)
 }
 
+#[inline]
 fn intersection_is_match(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &IntersectionState,
 ) -> bool {
     node.0.is_match(&state.0) && node.1.is_match(&state.1)
 }
 
+#[inline]
 fn intersection_can_match(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &IntersectionState,
 ) -> bool {
     node.0.can_match(&state.0) && node.1.can_match(&state.1)
 }
 
+#[inline]
 fn intersection_will_always_match(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &IntersectionState,
 ) -> bool {
     node.0.will_always_match(&state.0) && node.1.will_always_match(&state.1)
 }
 
+#[inline]
 fn intersection_accept(
-    node: &Box<(GraphAutomaton, GraphAutomaton)>,
+    node: &(Arc<GraphAutomaton>, Arc<GraphAutomaton>),
     state: &IntersectionState,
     byte: u8,
 ) -> State {
@@ -202,22 +233,27 @@ fn intersection_accept(
 #[derive(Debug)]
 pub struct ComplementState(State);
 
+#[inline]
 fn complement_start(node: &GraphAutomaton) -> State {
     State::Complement(Box::new(ComplementState(node.start())))
 }
 
+#[inline]
 fn complement_is_match(node: &GraphAutomaton, state: &ComplementState) -> bool {
     !node.is_match(&state.0)
 }
 
+#[inline]
 fn complement_can_match(node: &GraphAutomaton, state: &ComplementState) -> bool {
     !node.will_always_match(&state.0)
 }
 
+#[inline]
 fn complement_will_always_match(node: &GraphAutomaton, state: &ComplementState) -> bool {
     !node.can_match(&state.0)
 }
 
+#[inline]
 fn complement_accept(node: &GraphAutomaton, state: &ComplementState, byte: u8) -> State {
     State::Complement(Box::new(ComplementState(node.accept(&state.0, byte))))
 }
@@ -238,10 +274,10 @@ enum GraphAutomaton {
     AlwaysMatch,
     Str(Vec<u8>),
     Subsequence(Vec<u8>),
-    StartsWith(Box<GraphAutomaton>),
-    Complement(Box<GraphAutomaton>),
-    Intersection(Box<(GraphAutomaton, GraphAutomaton)>),
-    Union(Box<(GraphAutomaton, GraphAutomaton)>),
+    StartsWith(Arc<GraphAutomaton>),
+    Complement(Arc<GraphAutomaton>),
+    Intersection((Arc<GraphAutomaton>, Arc<GraphAutomaton>)),
+    Union((Arc<GraphAutomaton>, Arc<GraphAutomaton>)),
 }
 
 impl Automaton for GraphAutomaton {
@@ -323,5 +359,107 @@ impl Automaton for GraphAutomaton {
 
     fn accept_eof(&self, _: &Self::State) -> Option<Self::State> {
         None
+    }
+}
+
+#[pyclass]
+pub struct AutomatonGraph {
+    root: Option<Arc<GraphAutomaton>>,
+}
+
+#[pymethods]
+impl AutomatonGraph {
+    fn always<'py>(mut slf: PyRefMut<'py, Self>) -> PyResult<PyRefMut<'py, Self>> {
+        if slf.root.is_some() {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "always cannot wrap an existing automaton",
+            ));
+        }
+        slf.root = Some(Arc::new(GraphAutomaton::AlwaysMatch));
+        Ok(slf)
+    }
+
+    fn str<'py>(mut slf: PyRefMut<'py, Self>, str: &str) -> PyResult<PyRefMut<'py, Self>> {
+        if slf.root.is_some() {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "str cannot wrap an existing automaton",
+            ));
+        }
+        slf.root = Some(Arc::new(GraphAutomaton::Str(str.as_bytes().to_owned())));
+        Ok(slf)
+    }
+
+    fn subsequence<'py>(mut slf: PyRefMut<'py, Self>, str: &str) -> PyResult<PyRefMut<'py, Self>> {
+        if slf.root.is_some() {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "str cannot wrap an existing automaton",
+            ));
+        }
+        slf.root = Some(Arc::new(GraphAutomaton::Subsequence(
+            str.as_bytes().to_owned(),
+        )));
+        Ok(slf)
+    }
+
+    fn starts_with<'py>(mut slf: PyRefMut<'py, Self>) -> PyResult<PyRefMut<'py, Self>> {
+        if let Some(root) = &slf.root {
+            slf.root = Some(Arc::new(GraphAutomaton::StartsWith(root.clone())));
+        } else {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "starts_with needs to wrap an existing automaton",
+            ));
+        }
+        Ok(slf)
+    }
+
+    fn complement<'py>(mut slf: PyRefMut<'py, Self>) -> PyResult<PyRefMut<'py, Self>> {
+        if let Some(root) = &slf.root {
+            slf.root = Some(Arc::new(GraphAutomaton::Complement(root.clone())));
+        } else {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "complement needs to wrap an existing automaton",
+            ));
+        }
+        Ok(slf)
+    }
+
+    fn intersection<'py>(
+        mut slf: PyRefMut<'py, Self>,
+        other: &AutomatonGraph,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        match (&slf.root, &other.root) {
+            (Some(this), Some(other)) => {
+                slf.root = Some(Arc::new(GraphAutomaton::Intersection((
+                    this.clone(),
+                    other.clone(),
+                ))))
+            }
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                    "intersection needs to wrap an existing automaton",
+                ))
+            }
+        }
+        Ok(slf)
+    }
+
+    fn union<'py>(
+        mut slf: PyRefMut<'py, Self>,
+        other: &AutomatonGraph,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        match (&slf.root, &other.root) {
+            (Some(this), Some(other)) => {
+                slf.root = Some(Arc::new(GraphAutomaton::Union((
+                    this.clone(),
+                    other.clone(),
+                ))))
+            }
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                    "intersection needs to wrap an existing automaton",
+                ))
+            }
+        }
+        Ok(slf)
     }
 }

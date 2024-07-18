@@ -11,6 +11,7 @@ use ouroboros::self_referencing;
 use pyo3::prelude::*;
 
 mod fst_fork;
+pub use fst_fork::AutomatonGraph;
 
 /*
 fn apply_automaton<'a, T: AsRef<[u8]>>(

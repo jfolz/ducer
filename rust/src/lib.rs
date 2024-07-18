@@ -16,5 +16,6 @@ fn _fst(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(map::build_map, m)?)?;
     m.add_class::<set::Set>()?;
     m.add_function(wrap_pyfunction!(set::build_set, m)?)?;
+    m.add_class::<automaton::AutomatonGraph>()?;
     Ok(())
 }
