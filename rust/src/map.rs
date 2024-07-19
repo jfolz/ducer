@@ -1,6 +1,6 @@
 use fst::{
     automaton::{AlwaysMatch, Automaton, StartsWith, Str, Subsequence},
-    map::Stream,
+    map::{Keys, Stream, Values},
     IntoStreamer, Streamer,
 };
 use ouroboros::self_referencing;
@@ -79,6 +79,52 @@ impl MapAutomatonIterator {
     }
 }
 
+#[pyclass]
+#[self_referencing]
+struct MapKeyIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    #[borrows(map)]
+    #[not_covariant]
+    stream: Keys<'this>,
+}
+
+#[pymethods]
+impl MapKeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<Cow<[u8]>> {
+        match &self.with_stream_mut(|stream| stream.next()) {
+            Some(key) => Some(Cow::from(key.to_vec())),
+            None => None,
+        }
+    }
+}
+
+#[pyclass]
+#[self_referencing]
+struct MapValueIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    #[borrows(map)]
+    #[not_covariant]
+    stream: Values<'this>,
+}
+
+#[pymethods]
+impl MapValueIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<u64> {
+        match &self.with_stream_mut(|stream| stream.next()) {
+            Some(val) => Some(*val),
+            None => None,
+        }
+    }
+}
+
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
 #[pyclass(mapping)]
@@ -103,14 +149,8 @@ impl Map {
         Ok(Self { inner })
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<MapIterator>> {
-        let iter = MapIteratorBuilder {
-            map: slf.inner.clone(),
-            str: "".to_owned(),
-            stream_builder: |map, _| map.stream(),
-        }
-        .build();
-        Py::new(slf.py(), iter)
+    fn __iter__(&self) -> MapKeyIterator {
+        self.keys()
     }
 
     fn __getitem__(&self, key: &[u8]) -> Option<u64> {
@@ -123,6 +163,31 @@ impl Map {
 
     fn __len__(&self) -> usize {
         self.inner.len()
+    }
+
+    fn items(&self) -> MapIterator {
+        MapIteratorBuilder {
+            map: self.inner.clone(),
+            str: "".to_owned(),
+            stream_builder: |map, _| map.stream(),
+        }
+        .build()
+    }
+
+    fn keys(&self) -> MapKeyIterator {
+        MapKeyIteratorBuilder {
+            map: self.inner.clone(),
+            stream_builder: |map| map.keys(),
+        }
+        .build()
+    }
+
+    fn values(&self) -> MapValueIterator {
+        MapValueIteratorBuilder {
+            map: self.inner.clone(),
+            stream_builder: |map| map.values(),
+        }
+        .build()
     }
 
     fn starts_with(&self, str: String) -> MapStartsWithIterator {
