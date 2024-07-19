@@ -80,11 +80,7 @@ impl SetIterator {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
-fn fill_set<W: io::Write>(
-    iterable: &Bound<'_, PyAny>,
-    mut builder: fst::SetBuilder<W>,
-) -> PyResult<W> {
+fn fill<W: io::Write>(iterable: &Bound<'_, PyAny>, mut builder: fst::SetBuilder<W>) -> PyResult<W> {
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
@@ -101,14 +97,13 @@ fn fill_set<W: io::Write>(
 /// Build a Set from an iterable of `bytes`
 /// and write it to the given path.
 /// If path is `:memory:`, returns a `Buffer` containing the set data.
-#[pyfunction]
-#[allow(clippy::module_name_repetitions)]
-pub fn build_set(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
+#[pyfunction(name = "build_set")]
+pub fn build(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::SetBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-        let w = fill_set(iterable, builder)?;
+        let w = fill(iterable, builder)?;
         let ret = Buffer::new(w);
         Ok(Some(ret))
     } else {
@@ -118,7 +113,7 @@ pub fn build_set(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<
             .write(true)
             .open(path)?;
         let writer = BufWriter::with_capacity(BUFSIZE, wp);
-        fill_set(
+        fill(
             iterable,
             fst::SetBuilder::new(writer)
                 .map_err(|err| PyErr::new::<pyo3::exceptions::PyTypeError, _>(err.to_string()))?,

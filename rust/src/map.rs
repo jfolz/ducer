@@ -20,9 +20,9 @@ type ItemStream<'f> = Box<dyn for<'a> Streamer<'a, Item = (&'a [u8], u64)> + Sen
 type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
 type ValueStream<'f> = Box<dyn for<'a> Streamer<'a, Item = u64> + Send + 'f>;
 
-#[pyclass]
+#[pyclass(name = "MapItemIterator")]
 #[self_referencing]
-struct MapItemIterator {
+struct ItemIterator {
     map: Arc<fst::Map<PyBufferRef<u8>>>,
     str: String,
     #[borrows(map, str)]
@@ -31,7 +31,7 @@ struct MapItemIterator {
 }
 
 #[pymethods]
-impl MapItemIterator {
+impl ItemIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -42,9 +42,9 @@ impl MapItemIterator {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MapKeyIterator")]
 #[self_referencing]
-struct MapKeyIterator {
+struct KeyIterator {
     map: Arc<fst::Map<PyBufferRef<u8>>>,
     str: String,
     #[borrows(map, str)]
@@ -53,7 +53,7 @@ struct MapKeyIterator {
 }
 
 #[pymethods]
-impl MapKeyIterator {
+impl KeyIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -64,9 +64,9 @@ impl MapKeyIterator {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MapValueIterator")]
 #[self_referencing]
-struct MapValueIterator {
+struct ValueIterator {
     map: Arc<fst::Map<PyBufferRef<u8>>>,
     str: String,
     #[borrows(map, str)]
@@ -75,7 +75,7 @@ struct MapValueIterator {
 }
 
 #[pymethods]
-impl MapValueIterator {
+impl ValueIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -85,9 +85,9 @@ impl MapValueIterator {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MapAutomatonIterator")]
 #[self_referencing]
-struct MapAutomatonIterator {
+struct AutomatonIterator {
     map: Arc<fst::Map<PyBufferRef<u8>>>,
     automaton: ArcNode,
     #[borrows(map, automaton)]
@@ -96,7 +96,7 @@ struct MapAutomatonIterator {
 }
 
 #[pymethods]
-impl MapAutomatonIterator {
+impl AutomatonIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -153,7 +153,7 @@ impl Map {
         Ok(Self { inner })
     }
 
-    fn __iter__(&self) -> MapKeyIterator {
+    fn __iter__(&self) -> KeyIterator {
         self.keys()
     }
 
@@ -169,8 +169,8 @@ impl Map {
         self.inner.len()
     }
 
-    fn items(&self) -> MapItemIterator {
-        MapItemIteratorBuilder {
+    fn items(&self) -> ItemIterator {
+        ItemIteratorBuilder {
             map: self.inner.clone(),
             str: String::new(),
             stream_builder: |map, _| Box::new(map.stream()),
@@ -178,8 +178,8 @@ impl Map {
         .build()
     }
 
-    fn keys(&self) -> MapKeyIterator {
-        MapKeyIteratorBuilder {
+    fn keys(&self) -> KeyIterator {
+        KeyIteratorBuilder {
             map: self.inner.clone(),
             str: String::new(),
             stream_builder: |map, _| Box::new(map.keys()),
@@ -187,8 +187,8 @@ impl Map {
         .build()
     }
 
-    fn values(&self) -> MapValueIterator {
-        MapValueIteratorBuilder {
+    fn values(&self) -> ValueIterator {
+        ValueIteratorBuilder {
             map: self.inner.clone(),
             str: String::new(),
             stream_builder: |map, _| Box::new(map.values()),
@@ -204,8 +204,8 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> MapItemIterator {
-        MapItemIteratorBuilder {
+    ) -> ItemIterator {
+        ItemIteratorBuilder {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| {
@@ -226,8 +226,8 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> MapItemIterator {
-        MapItemIteratorBuilder {
+    ) -> ItemIterator {
+        ItemIteratorBuilder {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| {
@@ -245,8 +245,8 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> MapAutomatonIterator {
-        MapAutomatonIteratorBuilder {
+    ) -> AutomatonIterator {
+        AutomatonIteratorBuilder {
             map: self.inner.clone(),
             automaton: automaton.get(),
             stream_builder: |map, automaton| {
@@ -263,8 +263,8 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> MapItemIterator {
-        MapItemIteratorBuilder {
+    ) -> ItemIterator {
+        ItemIteratorBuilder {
             map: self.inner.clone(),
             str: String::new(),
             stream_builder: |map, _| Box::new(add_range(map.range(), ge, gt, le, lt).into_stream()),
@@ -273,11 +273,7 @@ impl Map {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
-fn fill_map<W: io::Write>(
-    iterable: &Bound<'_, PyAny>,
-    mut builder: fst::MapBuilder<W>,
-) -> PyResult<W> {
+fn fill<W: io::Write>(iterable: &Bound<'_, PyAny>, mut builder: fst::MapBuilder<W>) -> PyResult<W> {
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
@@ -317,14 +313,13 @@ fn fill_map<W: io::Write>(
 /// Build a Map from an iterable of items `(key: bytes, value: int)`
 /// and write it to the given path.
 /// If path is `:memory:`, returns a `Buffer` containing the map data.
-#[pyfunction]
-#[allow(clippy::module_name_repetitions)]
-pub fn build_map(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
+#[pyfunction(name = "build_map")]
+pub fn build(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::MapBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-        let w = fill_map(iterable, builder)?;
+        let w = fill(iterable, builder)?;
         let ret = Buffer::new(w);
         Ok(Some(ret))
     } else {
@@ -334,7 +329,7 @@ pub fn build_map(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<
             .write(true)
             .open(path)?;
         let writer = BufWriter::with_capacity(BUFSIZE, wp);
-        fill_map(
+        fill(
             iterable,
             fst::MapBuilder::new(writer)
                 .map_err(|err| PyErr::new::<pyo3::exceptions::PyTypeError, _>(err.to_string()))?,
