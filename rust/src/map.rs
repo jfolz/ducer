@@ -1,6 +1,6 @@
 use fst::{
-    automaton::{AlwaysMatch, Automaton, StartsWith, Str, Subsequence},
-    map::{Keys, Stream, Values},
+    automaton::{Automaton, Str, Subsequence},
+    map::Stream,
     IntoStreamer, Streamer,
 };
 use ouroboros::self_referencing;
@@ -16,44 +16,74 @@ use std::{
 use crate::automaton::{ArcNode, AutomatonGraph};
 use crate::buffer::{Buffer, PyBufferRef};
 
-macro_rules! define_iterators {
-    ($($name:ident $generic:ty),* $(,)?) => {
-        $(
-            #[pyclass]
-            #[self_referencing]
-            struct $name {
-                map: Arc<fst::Map<PyBufferRef<u8>>>,
-                str: String,
-                #[borrows(map, str)]
-                #[not_covariant]
-                stream: Stream<'this, $generic>,
-            }
+type ItemStream<'f> = Box<dyn for<'a> Streamer<'a, Item = (&'a [u8], u64)> + Send + 'f>;
+type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
+type ValueStream<'f> = Box<dyn for<'a> Streamer<'a, Item = u64> + Send + 'f>;
 
-            #[pymethods]
-            impl $name {
-                fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-                    slf
-                }
-
-                fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
-                    match &self.with_stream_mut(|stream| stream.next()) {
-                        Some((key, val)) => {
-                            Some((Cow::from(key.to_vec()), *val))
-                        }
-                        None => None,
-                    }
-                }
-            }
-        )*
-    };
+#[pyclass]
+#[self_referencing]
+struct MapItemIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    str: String,
+    #[borrows(map, str)]
+    #[not_covariant]
+    stream: ItemStream<'this>,
 }
 
-// Use the macro to define multiple structs
-define_iterators!(
-    MapIterator AlwaysMatch,
-    MapStartsWithIterator StartsWith<Str<'this>>,
-    MapSubsequenceIterator Subsequence<'this>,
-);
+#[pymethods]
+impl MapItemIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
+        self.with_stream_mut(|stream| stream.next())
+            .map(|(key, val)| (Cow::from(key.to_vec()), val))
+    }
+}
+
+#[pyclass]
+#[self_referencing]
+struct MapKeyIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    str: String,
+    #[borrows(map, str)]
+    #[not_covariant]
+    stream: KeyStream<'this>,
+}
+
+#[pymethods]
+impl MapKeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<Cow<[u8]>> {
+        self.with_stream_mut(|stream| stream.next())
+            .map(|key| Cow::from(key.to_vec()))
+    }
+}
+
+#[pyclass]
+#[self_referencing]
+struct MapValueIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    str: String,
+    #[borrows(map, str)]
+    #[not_covariant]
+    stream: ValueStream<'this>,
+}
+
+#[pymethods]
+impl MapValueIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<u64> {
+        self.with_stream_mut(|stream| stream.next())
+    }
+}
 
 #[pyclass]
 #[self_referencing]
@@ -74,47 +104,6 @@ impl MapAutomatonIterator {
     fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
         self.with_stream_mut(|stream| stream.next())
             .map(|(key, val)| (Cow::from(key.to_vec()), val))
-    }
-}
-
-#[pyclass]
-#[self_referencing]
-struct MapKeyIterator {
-    map: Arc<fst::Map<PyBufferRef<u8>>>,
-    #[borrows(map)]
-    #[not_covariant]
-    stream: Keys<'this>,
-}
-
-#[pymethods]
-impl MapKeyIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(&mut self) -> Option<Cow<[u8]>> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|key| Cow::from(key.to_vec()))
-    }
-}
-
-#[pyclass]
-#[self_referencing]
-struct MapValueIterator {
-    map: Arc<fst::Map<PyBufferRef<u8>>>,
-    #[borrows(map)]
-    #[not_covariant]
-    stream: Values<'this>,
-}
-
-#[pymethods]
-impl MapValueIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(&mut self) -> Option<u64> {
-        self.with_stream_mut(|stream| stream.next())
     }
 }
 
@@ -158,11 +147,11 @@ impl Map {
         self.inner.len()
     }
 
-    fn items(&self) -> MapIterator {
-        MapIteratorBuilder {
+    fn items(&self) -> MapItemIterator {
+        MapItemIteratorBuilder {
             map: self.inner.clone(),
             str: String::new(),
-            stream_builder: |map, _| map.stream(),
+            stream_builder: |map, _| Box::new(map.stream()),
         }
         .build()
     }
@@ -170,7 +159,8 @@ impl Map {
     fn keys(&self) -> MapKeyIterator {
         MapKeyIteratorBuilder {
             map: self.inner.clone(),
-            stream_builder: |map| map.keys(),
+            str: String::new(),
+            stream_builder: |map, _| Box::new(map.keys()),
         }
         .build()
     }
@@ -178,25 +168,28 @@ impl Map {
     fn values(&self) -> MapValueIterator {
         MapValueIteratorBuilder {
             map: self.inner.clone(),
-            stream_builder: |map| map.values(),
+            str: String::new(),
+            stream_builder: |map, _| Box::new(map.values()),
         }
         .build()
     }
 
-    fn starts_with(&self, str: String) -> MapStartsWithIterator {
-        MapStartsWithIteratorBuilder {
+    fn starts_with(&self, str: String) -> MapItemIterator {
+        MapItemIteratorBuilder {
             map: self.inner.clone(),
             str,
-            stream_builder: |map, str| map.search(Str::new(str).starts_with()).into_stream(),
+            stream_builder: |map, str| {
+                Box::new(map.search(Str::new(str).starts_with()).into_stream())
+            },
         }
         .build()
     }
 
-    fn subsequence(&self, str: String) -> MapSubsequenceIterator {
-        MapSubsequenceIteratorBuilder {
+    fn subsequence(&self, str: String) -> MapItemIterator {
+        MapItemIteratorBuilder {
             map: self.inner.clone(),
             str,
-            stream_builder: |map, str| map.search(Subsequence::new(str)).into_stream(),
+            stream_builder: |map, str| Box::new(map.search(Subsequence::new(str)).into_stream()),
         }
         .build()
     }
