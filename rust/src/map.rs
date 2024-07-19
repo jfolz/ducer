@@ -1,6 +1,6 @@
 use fst::{
     automaton::{Automaton, Str, Subsequence},
-    map::Stream,
+    map::{Stream, StreamBuilder},
     IntoStreamer, Streamer,
 };
 use ouroboros::self_referencing;
@@ -114,6 +114,28 @@ pub struct Map {
     inner: Arc<fst::Map<PyBufferRef<u8>>>,
 }
 
+fn add_range<'m, A: Automaton>(
+    mut builder: StreamBuilder<'m, A>,
+    ge: Option<&[u8]>,
+    gt: Option<&[u8]>,
+    le: Option<&[u8]>,
+    lt: Option<&[u8]>,
+) -> StreamBuilder<'m, A> {
+    if let Some(ge) = ge {
+        builder = builder.ge(ge);
+    }
+    if let Some(gt) = gt {
+        builder = builder.gt(gt);
+    }
+    if let Some(le) = le {
+        builder = builder.le(le);
+    }
+    if let Some(lt) = lt {
+        builder = builder.lt(lt);
+    }
+    builder
+}
+
 #[pymethods]
 impl Map {
     /// Create a `Map` from the given data.
@@ -174,31 +196,78 @@ impl Map {
         .build()
     }
 
-    fn starts_with(&self, str: String) -> MapItemIterator {
+    #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
+    fn starts_with(
+        &self,
+        str: String,
+        ge: Option<&[u8]>,
+        gt: Option<&[u8]>,
+        le: Option<&[u8]>,
+        lt: Option<&[u8]>,
+    ) -> MapItemIterator {
         MapItemIteratorBuilder {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| {
-                Box::new(map.search(Str::new(str).starts_with()).into_stream())
+                Box::new(
+                    add_range(map.search(Str::new(str).starts_with()), ge, gt, le, lt)
+                        .into_stream(),
+                )
             },
         }
         .build()
     }
 
-    fn subsequence(&self, str: String) -> MapItemIterator {
+    #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
+    fn subsequence(
+        &self,
+        str: String,
+        ge: Option<&[u8]>,
+        gt: Option<&[u8]>,
+        le: Option<&[u8]>,
+        lt: Option<&[u8]>,
+    ) -> MapItemIterator {
         MapItemIteratorBuilder {
             map: self.inner.clone(),
             str,
-            stream_builder: |map, str| Box::new(map.search(Subsequence::new(str)).into_stream()),
+            stream_builder: |map, str| {
+                Box::new(add_range(map.search(Subsequence::new(str)), ge, gt, le, lt).into_stream())
+            },
         }
         .build()
     }
 
-    fn search(&self, automaton: &AutomatonGraph) -> MapAutomatonIterator {
+    #[pyo3(signature = (automaton, ge=None, gt=None, le=None, lt=None))]
+    fn search(
+        &self,
+        automaton: &AutomatonGraph,
+        ge: Option<&[u8]>,
+        gt: Option<&[u8]>,
+        le: Option<&[u8]>,
+        lt: Option<&[u8]>,
+    ) -> MapAutomatonIterator {
         MapAutomatonIteratorBuilder {
             map: self.inner.clone(),
             automaton: automaton.get(),
-            stream_builder: |map, automaton| map.search(automaton.get()).into_stream(),
+            stream_builder: |map, automaton| {
+                add_range(map.search(automaton.get()), ge, gt, le, lt).into_stream()
+            },
+        }
+        .build()
+    }
+
+    #[pyo3(signature = (ge=None, gt=None, le=None, lt=None))]
+    fn range(
+        &self,
+        ge: Option<&[u8]>,
+        gt: Option<&[u8]>,
+        le: Option<&[u8]>,
+        lt: Option<&[u8]>,
+    ) -> MapItemIterator {
+        MapItemIteratorBuilder {
+            map: self.inner.clone(),
+            str: String::new(),
+            stream_builder: |map, _| Box::new(add_range(map.range(), ge, gt, le, lt).into_stream()),
         }
         .build()
     }
