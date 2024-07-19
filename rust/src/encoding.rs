@@ -4,7 +4,7 @@ use pyo3::{
 };
 
 #[pyfunction]
-pub fn encode_int<'py>(py: Python<'py>, i: u64) -> PyResult<Bound<'py, PyBytes>> {
+pub fn encode_int(py: Python<'_>, i: u64) -> PyResult<Bound<'_, PyBytes>> {
     // +3 for bits needed to encode length
     let num_bits = u64::BITS - (i | 1).leading_zeros() + 3;
     let num_bytes = (num_bits + 7) >> 3;
@@ -13,7 +13,8 @@ pub fn encode_int<'py>(py: Python<'py>, i: u64) -> PyResult<Bound<'py, PyBytes>>
             "int {i} > 2305843009213693951"
         )));
     }
-    let enc = (i << 3) | ((num_bytes - 1) as u64);
+
+    let enc = (i << 3) | u64::from(num_bytes - 1);
     let enc = enc.to_be_bytes();
     let (_, enc) = enc.split_at((u64::BITS / 8 - num_bytes) as usize);
     Ok(PyBytes::new_bound(py, enc))

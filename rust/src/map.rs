@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::automaton::{ArcAutomatonGraphNode, AutomatonGraph};
+use crate::automaton::{ArcNode, AutomatonGraph};
 use crate::buffer::{Buffer, PyBufferRef};
 
 macro_rules! define_iterators {
@@ -59,10 +59,10 @@ define_iterators!(
 #[self_referencing]
 struct MapAutomatonIterator {
     map: Arc<fst::Map<PyBufferRef<u8>>>,
-    automaton: ArcAutomatonGraphNode,
+    automaton: ArcNode,
     #[borrows(map, automaton)]
     #[not_covariant]
-    stream: Stream<'this, ArcAutomatonGraphNode>,
+    stream: Stream<'this, ArcNode>,
 }
 
 #[pymethods]
@@ -72,10 +72,8 @@ impl MapAutomatonIterator {
     }
 
     fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
-        match &self.with_stream_mut(|stream| stream.next()) {
-            Some((key, val)) => Some((Cow::from(key.to_vec()), *val)),
-            None => None,
-        }
+        self.with_stream_mut(|stream| stream.next())
+            .map(|(key, val)| (Cow::from(key.to_vec()), val))
     }
 }
 
@@ -95,10 +93,8 @@ impl MapKeyIterator {
     }
 
     fn __next__(&mut self) -> Option<Cow<[u8]>> {
-        match &self.with_stream_mut(|stream| stream.next()) {
-            Some(key) => Some(Cow::from(key.to_vec())),
-            None => None,
-        }
+        self.with_stream_mut(|stream| stream.next())
+            .map(|key| Cow::from(key.to_vec()))
     }
 }
 
@@ -118,10 +114,7 @@ impl MapValueIterator {
     }
 
     fn __next__(&mut self) -> Option<u64> {
-        match &self.with_stream_mut(|stream| stream.next()) {
-            Some(val) => Some(*val),
-            None => None,
-        }
+        self.with_stream_mut(|stream| stream.next())
     }
 }
 
@@ -139,7 +132,7 @@ impl Map {
     /// e.g., `bytes`, `memoryview`, `mmap`, etc.
     /// Important: `data` needs to be contiguous.
     #[new]
-    fn init<'py>(data: &Bound<'py, PyAny>) -> PyResult<Map> {
+    fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner =
@@ -168,7 +161,7 @@ impl Map {
     fn items(&self) -> MapIterator {
         MapIteratorBuilder {
             map: self.inner.clone(),
-            str: "".to_owned(),
+            str: String::new(),
             stream_builder: |map, _| map.stream(),
         }
         .build()
@@ -208,7 +201,7 @@ impl Map {
         .build()
     }
 
-    fn search<'py>(&self, automaton: &AutomatonGraph) -> MapAutomatonIterator {
+    fn search(&self, automaton: &AutomatonGraph) -> MapAutomatonIterator {
         MapAutomatonIteratorBuilder {
             map: self.inner.clone(),
             automaton: automaton.get(),
@@ -218,8 +211,9 @@ impl Map {
     }
 }
 
-fn fill_map<'py, W: io::Write>(
-    iterable: &Bound<'py, PyAny>,
+#[allow(clippy::module_name_repetitions)]
+fn fill_map<W: io::Write>(
+    iterable: &Bound<'_, PyAny>,
     mut builder: fst::MapBuilder<W>,
 ) -> PyResult<W> {
     let iterator = iterable.iter()?;
@@ -262,7 +256,8 @@ fn fill_map<'py, W: io::Write>(
 /// and write it to the given path.
 /// If path is `:memory:`, returns a `Buffer` containing the map data.
 #[pyfunction]
-pub fn build_map<'py>(iterable: &Bound<'py, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
+#[allow(clippy::module_name_repetitions)]
+pub fn build_map(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::MapBuilder::new(buf)

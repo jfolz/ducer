@@ -72,7 +72,7 @@ fn str_accept(str: &[u8], pos: &Option<usize>, byte: u8) -> State {
     // if we aren't already past the end...
     if let Some(pos) = *pos {
         // and there is still a matching byte at the current position...
-        if str.get(pos).cloned() == Some(byte) {
+        if str.get(pos).copied() == Some(byte) {
             // then move forward
             return State::Str(Some(pos + 1));
         }
@@ -87,7 +87,7 @@ fn subsequence_start() -> State {
 }
 
 #[inline]
-fn subsequence_is_match(node: &[u8], &state: &usize) -> bool {
+fn subsequence_is_match(node: &[u8], state: usize) -> bool {
     state == node.len()
 }
 
@@ -97,16 +97,16 @@ fn subsequence_can_match() -> bool {
 }
 
 #[inline]
-fn subsequence_will_always_match(node: &[u8], &state: &usize) -> bool {
+fn subsequence_will_always_match(node: &[u8], state: usize) -> bool {
     state == node.len()
 }
 
 #[inline]
-fn subsequence_accept(node: &[u8], &state: &usize, byte: u8) -> State {
+fn subsequence_accept(node: &[u8], state: usize, byte: u8) -> State {
     if state == node.len() {
         return State::Subsequence(state);
     }
-    State::Subsequence(state + (byte == node[state]) as usize)
+    State::Subsequence(state + usize::from(byte == node[state]))
 }
 
 #[derive(Debug)]
@@ -116,7 +116,7 @@ pub enum StartsWithState {
 }
 
 #[inline]
-fn starts_with_start(node: &AutomatonGraphNode) -> State {
+fn starts_with_start(node: &Node) -> State {
     State::StartsWith(Box::new({
         let inner = node.start();
         if node.is_match(&inner) {
@@ -136,7 +136,7 @@ fn starts_with_is_match(state: &StartsWithState) -> bool {
 }
 
 #[inline]
-fn starts_with_can_match(node: &AutomatonGraphNode, state: &StartsWithState) -> bool {
+fn starts_with_can_match(node: &Node, state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
         StartsWithState::Running(ref inner) => node.can_match(inner),
@@ -152,7 +152,7 @@ fn starts_with_will_always_match(state: &StartsWithState) -> bool {
 }
 
 #[inline]
-fn starts_with_accept(node: &AutomatonGraphNode, state: &StartsWithState, byte: u8) -> State {
+fn starts_with_accept(node: &Node, state: &StartsWithState, byte: u8) -> State {
     State::StartsWith(Box::new(match state {
         StartsWithState::Done => StartsWithState::Done,
         StartsWithState::Running(ref inner) => {
@@ -170,40 +170,27 @@ fn starts_with_accept(node: &AutomatonGraphNode, state: &StartsWithState, byte: 
 pub struct UnionState(State, State);
 
 #[inline]
-fn union_start(node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>)) -> State {
+fn union_start(node: &(Arc<Node>, Arc<Node>)) -> State {
     State::Union(Box::new(UnionState(node.0.start(), node.1.start())))
 }
 
 #[inline]
-fn union_is_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &UnionState,
-) -> bool {
+fn union_is_match(node: &(Arc<Node>, Arc<Node>), state: &UnionState) -> bool {
     node.0.is_match(&state.0) || node.1.is_match(&state.1)
 }
 
 #[inline]
-fn union_can_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &UnionState,
-) -> bool {
+fn union_can_match(node: &(Arc<Node>, Arc<Node>), state: &UnionState) -> bool {
     node.0.can_match(&state.0) || node.1.can_match(&state.1)
 }
 
 #[inline]
-fn union_will_always_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &UnionState,
-) -> bool {
+fn union_will_always_match(node: &(Arc<Node>, Arc<Node>), state: &UnionState) -> bool {
     node.0.will_always_match(&state.0) || node.1.will_always_match(&state.1)
 }
 
 #[inline]
-fn union_accept(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &UnionState,
-    byte: u8,
-) -> State {
+fn union_accept(node: &(Arc<Node>, Arc<Node>), state: &UnionState, byte: u8) -> State {
     State::Union(Box::new(UnionState(
         node.0.accept(&state.0, byte),
         node.1.accept(&state.1, byte),
@@ -214,30 +201,24 @@ fn union_accept(
 pub struct IntersectionState(State, State);
 
 #[inline]
-fn intersection_start(node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>)) -> State {
+fn intersection_start(node: &(Arc<Node>, Arc<Node>)) -> State {
     let s = Box::new(IntersectionState(node.0.start(), node.1.start()));
     State::Intersection(s)
 }
 
 #[inline]
-fn intersection_is_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &IntersectionState,
-) -> bool {
+fn intersection_is_match(node: &(Arc<Node>, Arc<Node>), state: &IntersectionState) -> bool {
     node.0.is_match(&state.0) && node.1.is_match(&state.1)
 }
 
 #[inline]
-fn intersection_can_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
-    state: &IntersectionState,
-) -> bool {
+fn intersection_can_match(node: &(Arc<Node>, Arc<Node>), state: &IntersectionState) -> bool {
     node.0.can_match(&state.0) && node.1.can_match(&state.1)
 }
 
 #[inline]
 fn intersection_will_always_match(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
+    node: &(Arc<Node>, Arc<Node>),
     state: &IntersectionState,
 ) -> bool {
     node.0.will_always_match(&state.0) && node.1.will_always_match(&state.1)
@@ -245,7 +226,7 @@ fn intersection_will_always_match(
 
 #[inline]
 fn intersection_accept(
-    node: &(Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>),
+    node: &(Arc<Node>, Arc<Node>),
     state: &IntersectionState,
     byte: u8,
 ) -> State {
@@ -259,27 +240,27 @@ fn intersection_accept(
 pub struct ComplementState(State);
 
 #[inline]
-fn complement_start(node: &AutomatonGraphNode) -> State {
+fn complement_start(node: &Node) -> State {
     State::Complement(Box::new(ComplementState(node.start())))
 }
 
 #[inline]
-fn complement_is_match(node: &AutomatonGraphNode, state: &ComplementState) -> bool {
+fn complement_is_match(node: &Node, state: &ComplementState) -> bool {
     !node.is_match(&state.0)
 }
 
 #[inline]
-fn complement_can_match(node: &AutomatonGraphNode, state: &ComplementState) -> bool {
+fn complement_can_match(node: &Node, state: &ComplementState) -> bool {
     !node.will_always_match(&state.0)
 }
 
 #[inline]
-fn complement_will_always_match(node: &AutomatonGraphNode, state: &ComplementState) -> bool {
+fn complement_will_always_match(node: &Node, state: &ComplementState) -> bool {
     !node.can_match(&state.0)
 }
 
 #[inline]
-fn complement_accept(node: &AutomatonGraphNode, state: &ComplementState, byte: u8) -> State {
+fn complement_accept(node: &Node, state: &ComplementState, byte: u8) -> State {
     State::Complement(Box::new(ComplementState(node.accept(&state.0, byte))))
 }
 
@@ -296,18 +277,18 @@ pub enum State {
 }
 
 #[derive(Debug)]
-pub enum AutomatonGraphNode {
+pub enum Node {
     NeverMatch,
     AlwaysMatch,
     Str(Vec<u8>),
     Subsequence(Vec<u8>),
-    StartsWith(Arc<AutomatonGraphNode>),
-    Complement(Arc<AutomatonGraphNode>),
-    Intersection((Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>)),
-    Union((Arc<AutomatonGraphNode>, Arc<AutomatonGraphNode>)),
+    StartsWith(Arc<Node>),
+    Complement(Arc<Node>),
+    Intersection((Arc<Node>, Arc<Node>)),
+    Union((Arc<Node>, Arc<Node>)),
 }
 
-impl Automaton for AutomatonGraphNode {
+impl Automaton for Node {
     type State = State;
 
     fn start(&self) -> State {
@@ -328,12 +309,12 @@ impl Automaton for AutomatonGraphNode {
             (Self::NeverMatch, State::NeverMatch) => nevermatch_is_match(),
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_is_match(),
             (Self::Str(n), State::Str(state)) => str_is_match(n, state),
-            (Self::Subsequence(n), State::Subsequence(state)) => subsequence_is_match(n, state),
+            (Self::Subsequence(n), State::Subsequence(state)) => subsequence_is_match(n, *state),
             (Self::StartsWith(_), State::StartsWith(state)) => starts_with_is_match(state),
             (Self::Complement(n), State::Complement(state)) => complement_is_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_is_match(n, state),
             (Self::Union(n), State::Union(state)) => union_is_match(n, state),
-            _ => panic!("type mismatch: node {:?} state {:?}", self, state),
+            _ => panic!("type mismatch: node {self:?} state {state:?}"),
         }
     }
 
@@ -348,7 +329,7 @@ impl Automaton for AutomatonGraphNode {
             (Self::Complement(n), State::Complement(state)) => complement_can_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_can_match(n, state),
             (Self::Union(n), State::Union(state)) => union_can_match(n, state),
-            _ => panic!("type mismatch: node {:?} state {:?}", self, state),
+            _ => panic!("type mismatch: node {self:?} state {state:?}"),
         }
     }
 
@@ -359,7 +340,7 @@ impl Automaton for AutomatonGraphNode {
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_will_always_match(),
             (Self::Str(_), State::Str(_)) => false,
             (Self::Subsequence(n), State::Subsequence(state)) => {
-                subsequence_will_always_match(n, state)
+                subsequence_will_always_match(n, *state)
             }
             (Self::StartsWith(_), State::StartsWith(state)) => starts_with_will_always_match(state),
             (Self::Complement(n), State::Complement(state)) => {
@@ -369,7 +350,7 @@ impl Automaton for AutomatonGraphNode {
                 intersection_will_always_match(n, state)
             }
             (Self::Union(n), State::Union(state)) => union_will_always_match(n, state),
-            _ => panic!("type mismatch: node {:?} state {:?}", self, state),
+            _ => panic!("type mismatch: node {self:?} state {state:?}"),
         }
     }
 
@@ -378,14 +359,16 @@ impl Automaton for AutomatonGraphNode {
             (Self::NeverMatch, State::NeverMatch) => nevermatch_accept(),
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_accept(),
             (Self::Str(n), State::Str(state)) => str_accept(n, state, byte),
-            (Self::Subsequence(n), State::Subsequence(state)) => subsequence_accept(n, state, byte),
+            (Self::Subsequence(n), State::Subsequence(state)) => {
+                subsequence_accept(n, *state, byte)
+            }
             (Self::StartsWith(n), State::StartsWith(state)) => starts_with_accept(n, state, byte),
             (Self::Complement(n), State::Complement(state)) => complement_accept(n, state, byte),
             (Self::Intersection(n), State::Intersection(state)) => {
                 intersection_accept(n, state, byte)
             }
             (Self::Union(n), State::Union(state)) => union_accept(n, state, byte),
-            _ => panic!("type mismatch: node {:?} state {:?}", self, state),
+            _ => panic!("type mismatch: node {self:?} state {state:?}"),
         }
     }
 
@@ -394,15 +377,15 @@ impl Automaton for AutomatonGraphNode {
     }
 }
 
-pub struct ArcAutomatonGraphNode(Arc<AutomatonGraphNode>);
+pub struct ArcNode(Arc<Node>);
 
-impl ArcAutomatonGraphNode {
-    pub fn get(&self) -> ArcAutomatonGraphNode {
-        ArcAutomatonGraphNode(self.0.clone())
+impl ArcNode {
+    pub fn get(&self) -> ArcNode {
+        ArcNode(self.0.clone())
     }
 }
 
-impl Automaton for ArcAutomatonGraphNode {
+impl Automaton for ArcNode {
     type State = State;
 
     fn start(&self) -> State {
@@ -431,13 +414,14 @@ impl Automaton for ArcAutomatonGraphNode {
 }
 
 #[pyclass(name = "Automaton")]
+#[allow(clippy::module_name_repetitions)]
 pub struct AutomatonGraph {
-    root: Arc<AutomatonGraphNode>,
+    root: Arc<Node>,
 }
 
 impl AutomatonGraph {
-    pub fn get(&self) -> ArcAutomatonGraphNode {
-        ArcAutomatonGraphNode(self.root.clone())
+    pub fn get(&self) -> ArcNode {
+        ArcNode(self.root.clone())
     }
 }
 
@@ -446,38 +430,38 @@ impl AutomatonGraph {
     #[classmethod]
     fn never(_cls: &Bound<'_, PyType>) -> Self {
         Self {
-            root: Arc::new(AutomatonGraphNode::NeverMatch),
+            root: Arc::new(Node::NeverMatch),
         }
     }
 
     #[classmethod]
     fn always(_cls: &Bound<'_, PyType>) -> Self {
         Self {
-            root: Arc::new(AutomatonGraphNode::AlwaysMatch),
+            root: Arc::new(Node::AlwaysMatch),
         }
     }
 
     #[classmethod]
-    fn str<'py>(_cls: &Bound<'_, PyType>, str: &str) -> Self {
+    fn str(_cls: &Bound<'_, PyType>, str: &str) -> Self {
         Self {
-            root: Arc::new(AutomatonGraphNode::Str(str.as_bytes().to_owned())),
+            root: Arc::new(Node::Str(str.as_bytes().to_owned())),
         }
     }
 
     #[classmethod]
-    fn subsequence<'py>(_cls: &Bound<'_, PyType>, str: &str) -> Self {
+    fn subsequence(_cls: &Bound<'_, PyType>, str: &str) -> Self {
         Self {
-            root: Arc::new(AutomatonGraphNode::Subsequence(str.as_bytes().to_owned())),
+            root: Arc::new(Node::Subsequence(str.as_bytes().to_owned())),
         }
     }
 
-    fn starts_with<'py>(mut slf: PyRefMut<'py, Self>) -> PyRefMut<'py, Self> {
-        slf.root = Arc::new(AutomatonGraphNode::StartsWith(slf.root.clone()));
+    fn starts_with(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
+        slf.root = Arc::new(Node::StartsWith(slf.root.clone()));
         slf
     }
 
-    fn complement<'py>(mut slf: PyRefMut<'py, Self>) -> PyRefMut<'py, Self> {
-        slf.root = Arc::new(AutomatonGraphNode::Complement(slf.root.clone()));
+    fn complement(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
+        slf.root = Arc::new(Node::Complement(slf.root.clone()));
         slf
     }
 
@@ -485,18 +469,12 @@ impl AutomatonGraph {
         mut slf: PyRefMut<'py, Self>,
         other: &AutomatonGraph,
     ) -> PyRefMut<'py, Self> {
-        slf.root = Arc::new(AutomatonGraphNode::Intersection((
-            slf.root.clone(),
-            other.root.clone(),
-        )));
+        slf.root = Arc::new(Node::Intersection((slf.root.clone(), other.root.clone())));
         slf
     }
 
     fn union<'py>(mut slf: PyRefMut<'py, Self>, other: &AutomatonGraph) -> PyRefMut<'py, Self> {
-        slf.root = Arc::new(AutomatonGraphNode::Union((
-            slf.root.clone(),
-            other.root.clone(),
-        )));
+        slf.root = Arc::new(Node::Union((slf.root.clone(), other.root.clone())));
         slf
     }
 }

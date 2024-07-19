@@ -23,6 +23,7 @@ impl Buffer {
 
 #[pymethods]
 impl Buffer {
+    #[allow(clippy::cast_possible_wrap)]
     unsafe fn __getbuffer__(
         slf: Bound<'_, Self>,
         view: *mut ffi::Py_buffer,
@@ -40,6 +41,10 @@ impl Buffer {
         // This is safe, since slf owns the underlying Vec
         (*view).buf = data.as_ptr() as *mut c_void;
         (*view).len = data.len() as isize;
+        // check if casting data.len() to isize has wrapped around
+        if (*view).len < 0 {
+            return Err(PyBufferError::new_err("Buffer is too large"));
+        }
         (*view).readonly = 1;
         (*view).itemsize = 1;
         (*view).ndim = 1;
@@ -76,6 +81,7 @@ impl Buffer {
         Ok(())
     }
 
+    #[allow(clippy::unused_self)]
     unsafe fn __releasebuffer__(&self, view: *mut ffi::Py_buffer) {
         // drop the format string, if any
         let fmt = (*view).format;
@@ -91,14 +97,14 @@ pub struct PyBufferRef<T: Element> {
 
 impl<T: Element> PyBufferRef<T> {
     /// Create a new `PyBufferRef` from the given `PyBuffer`.
-    /// Returns PyValueError if buffer is not contiguous.
+    /// Returns `PyValueError` if buffer is not contiguous.
     pub fn new(view: PyBuffer<T>) -> PyResult<Self> {
-        if !(view.is_c_contiguous() || view.is_fortran_contiguous()) {
+        if view.is_c_contiguous() || view.is_fortran_contiguous() {
+            Ok(Self { view })
+        } else {
             Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "buffer must be contiguous",
             ))
-        } else {
-            Ok(Self { view })
         }
     }
 }

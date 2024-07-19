@@ -24,7 +24,7 @@ impl Set {
     /// e.g., `bytes`, `memoryview`, `mmap`, etc.
     /// Important: `data` needs to be contiguous.
     #[new]
-    fn init<'py>(data: &Bound<'py, PyAny>) -> PyResult<Set> {
+    fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner =
@@ -34,6 +34,7 @@ impl Set {
         Ok(Self { inner })
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SetIterator>> {
         let iter = SetIteratorBuilder {
             set: slf.inner.clone(),
@@ -79,8 +80,9 @@ impl SetIterator {
     }
 }
 
-fn fill_set<'py, W: io::Write>(
-    iterable: &Bound<'py, PyAny>,
+#[allow(clippy::module_name_repetitions)]
+fn fill_set<W: io::Write>(
+    iterable: &Bound<'_, PyAny>,
     mut builder: fst::SetBuilder<W>,
 ) -> PyResult<W> {
     let iterator = iterable.iter()?;
@@ -100,7 +102,8 @@ fn fill_set<'py, W: io::Write>(
 /// and write it to the given path.
 /// If path is `:memory:`, returns a `Buffer` containing the set data.
 #[pyfunction]
-pub fn build_set<'py>(iterable: &Bound<'py, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
+#[allow(clippy::module_name_repetitions)]
+pub fn build_set(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::SetBuilder::new(buf)
