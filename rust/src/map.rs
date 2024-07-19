@@ -4,19 +4,16 @@ use fst::{
     IntoStreamer, Streamer,
 };
 use ouroboros::self_referencing;
-use pyo3::{
-    buffer::PyBuffer,
-    prelude::*,
-    types::{PyBytes, PyTuple},
-};
+use pyo3::{buffer::PyBuffer, prelude::*, types::PyTuple};
 use std::{
+    borrow::Cow,
     fs,
     io::{self, BufWriter},
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-//use crate::automaton::{StartsWithAutomata, StrAutomata};
+use crate::automaton::{ArcAutomatonGraphNode, AutomatonGraph};
 use crate::buffer::{Buffer, PyBufferRef};
 
 macro_rules! define_iterators {
@@ -38,14 +35,10 @@ macro_rules! define_iterators {
                     slf
                 }
 
-                fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-                    let py = slf.py();
-                    match &slf.with_stream_mut(|stream| stream.next()) {
+                fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
+                    match &self.with_stream_mut(|stream| stream.next()) {
                         Some((key, val)) => {
-                            let k = PyBytes::new_bound(py, key).into_py(py);
-                            let v = val.to_object(py);
-                            let t = PyTuple::new_bound(py, [k, v]);
-                            Some(t.into_py(py))
+                            Some((Cow::from(key.to_vec()), *val))
                         }
                         None => None,
                     }
@@ -61,6 +54,30 @@ define_iterators!(
     MapStartsWithIterator StartsWith<Str<'this>>,
     MapSubsequenceIterator Subsequence<'this>,
 );
+
+#[pyclass]
+#[self_referencing]
+struct MapAutomatonIterator {
+    map: Arc<fst::Map<PyBufferRef<u8>>>,
+    automaton: ArcAutomatonGraphNode,
+    #[borrows(map, automaton)]
+    #[not_covariant]
+    stream: Stream<'this, ArcAutomatonGraphNode>,
+}
+
+#[pymethods]
+impl MapAutomatonIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
+        match &self.with_stream_mut(|stream| stream.next()) {
+            Some((key, val)) => Some((Cow::from(key.to_vec()), *val)),
+            None => None,
+        }
+    }
+}
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
@@ -122,6 +139,15 @@ impl Map {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| map.search(Subsequence::new(str)).into_stream(),
+        }
+        .build()
+    }
+
+    fn search<'py>(&self, automaton: &AutomatonGraph) -> MapAutomatonIterator {
+        MapAutomatonIteratorBuilder {
+            map: self.inner.clone(),
+            automaton: automaton.get(),
+            stream_builder: |map, automaton| map.search(automaton.get()).into_stream(),
         }
         .build()
     }

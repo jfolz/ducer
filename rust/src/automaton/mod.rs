@@ -1,17 +1,5 @@
-use std::{any::Any, vec};
-
-use fst::{
-    automaton::{
-        self, AlwaysMatch, Automaton, Complement, ComplementState, Intersection, IntersectionState,
-        StartsWith, StartsWithState, Str, Subsequence, Union, UnionState,
-    },
-    map, set, IntoStreamer, Map, Set,
-};
-use ouroboros::self_referencing;
-use pyo3::prelude::*;
-
 mod fst_fork;
-pub use fst_fork::AutomatonGraph;
+pub use fst_fork::*;
 
 /*
 fn apply_automaton<'a, T: AsRef<[u8]>>(
