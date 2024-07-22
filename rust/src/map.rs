@@ -255,6 +255,42 @@ fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
     builder
 }
 
+#[pyclass(eq, eq_int)]
+#[derive(PartialEq, Clone)]
+enum SelectFun {
+    First,
+    Mid,
+    Last,
+    Min,
+    Max,
+    Avg,
+    Median,
+}
+
+fn select_value(sf: SelectFun, posval: &[IndexedValue]) -> u64 {
+    match sf {
+        SelectFun::First => posval.first().unwrap().value,
+        SelectFun::Mid => posval.last().unwrap().value,
+        SelectFun::Last => posval.last().unwrap().value,
+        SelectFun::Min => posval.iter().map(|i| i.value).min().unwrap(),
+        SelectFun::Max => posval.iter().map(|i| i.value).max().unwrap(),
+        SelectFun::Avg => posval.iter().map(|i| i.value).sum::<u64>() / (posval.len() as u64),
+        SelectFun::Median => {
+            let mut values: Vec<u64> = posval.iter().map(|i| i.value).collect();
+            let n = values.len();
+            let mid = n / 2;
+            let (lesser, median, _) = values.select_nth_unstable(mid);
+            if n % 2 == 1 {
+                // odd length
+                *median
+            } else {
+                // even length
+                (*median + lesser.iter().max().unwrap()) / 2
+            }
+        }
+    }
+}
+
 #[pymethods]
 impl Map {
     /// Create a `Map` from the given data.
@@ -417,39 +453,55 @@ impl Map {
         .build()
     }
 
-    #[pyo3(signature = (path, *others))]
+    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
-    fn union(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+    fn union(
+        &self,
+        path: PathBuf,
+        others: &Bound<'_, PyTuple>,
+        select: SelectFun,
+    ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).union();
-        build_from_stream(&path, stream, |posval| posval.last().unwrap().value)
+        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others))]
+    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
-    fn intersection(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+    fn intersection(
+        &self,
+        path: PathBuf,
+        others: &Bound<'_, PyTuple>,
+        select: SelectFun,
+    ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).intersection();
-        build_from_stream(&path, stream, |posval| posval.last().unwrap().value)
+        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others))]
+    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
-    fn difference(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+    fn difference(
+        &self,
+        path: PathBuf,
+        others: &Bound<'_, PyTuple>,
+        select: SelectFun,
+    ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).difference();
-        build_from_stream(&path, stream, |posval| posval.last().unwrap().value)
+        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others))]
+    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
         &self,
         path: PathBuf,
         others: &Bound<'_, PyTuple>,
+        select: SelectFun,
     ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).symmetric_difference();
-        build_from_stream(&path, stream, |posval| posval.last().unwrap().value)
+        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 }
