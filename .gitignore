@@ -1,5 +1,6 @@
 /dist
 /rust/target
+/wheelhouse
 __pycache__
 *.so
 *.egg-info
