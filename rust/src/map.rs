@@ -2,11 +2,12 @@ use fst::{
     automaton::{Automaton, Str, Subsequence},
     map::{OpBuilder, Stream, StreamBuilder},
     raw::IndexedValue,
-    IntoStreamer, Streamer,
+    IntoStreamer, MapBuilder, Streamer,
 };
 use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
+    exceptions::{PyIOError, PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyTuple, PyType},
 };
@@ -148,18 +149,18 @@ where
     F: Fn(&[IndexedValue]) -> u64,
 {
     let mut stream = stream.into_stream();
-    let mut builder = fst::MapBuilder::new(buf)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
+    let mut builder =
+        MapBuilder::new(buf).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
     while let Some((key, posval)) = stream.next() {
         // TODO other options instead of last value
         // unwrap() is OK here, since stream.next() never returns an empty slice
         builder
             .insert(key, select(posval))
-            .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))?;
+            .map_err(|err| PyErr::new::<PyValueError, _>(err.to_string()))?;
     }
     builder
         .into_inner()
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))
+        .map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))
 }
 
 fn build_from_stream<'f, I, S, F>(path: &Path, stream: I, select: F) -> PyResult<Option<Buffer>>
@@ -187,13 +188,13 @@ where
 #[inline]
 fn insert_pyobject<W: io::Write>(
     obj: &Bound<'_, PyAny>,
-    builder: &mut fst::MapBuilder<W>,
+    builder: &mut MapBuilder<W>,
 ) -> PyResult<()> {
     let item0;
     let (key, val) = if let Ok(tuple) = obj.downcast::<PyTuple>() {
         let items = tuple.as_slice();
         if items.len() != 2 {
-            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            return Err(PyErr::new::<PyTypeError, _>(
                 "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
             ));
         }
@@ -202,7 +203,7 @@ fn insert_pyobject<W: io::Write>(
         (key, val)
     } else {
         if obj.len()? != 2 {
-            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            return Err(PyErr::new::<PyTypeError, _>(
                 "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
             ));
         }
@@ -213,12 +214,12 @@ fn insert_pyobject<W: io::Write>(
     };
     builder
         .insert(key, val)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))
+        .map_err(|err| PyErr::new::<PyValueError, _>(err.to_string()))
 }
 
 fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyResult<W> {
-    let mut builder = fst::MapBuilder::new(buf)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
+    let mut builder =
+        MapBuilder::new(buf).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
@@ -226,7 +227,7 @@ fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyRe
     }
     builder
         .into_inner()
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
+        .map_err(|err| PyErr::new::<PyIOError, _>(err.to_string()))
 }
 
 fn mapvec(tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> {
@@ -251,7 +252,7 @@ fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
 
 #[pyclass(eq, eq_int)]
 #[derive(PartialEq, Clone)]
-enum SelectFun {
+pub enum Op {
     First,
     Mid,
     Last,
@@ -261,15 +262,15 @@ enum SelectFun {
     Median,
 }
 
-fn select_value(sf: SelectFun, posval: &[IndexedValue]) -> u64 {
+fn select_value(sf: Op, posval: &[IndexedValue]) -> u64 {
     match sf {
-        SelectFun::First => posval.first().unwrap().value,
-        SelectFun::Mid => posval.last().unwrap().value,
-        SelectFun::Last => posval.last().unwrap().value,
-        SelectFun::Min => posval.iter().map(|i| i.value).min().unwrap(),
-        SelectFun::Max => posval.iter().map(|i| i.value).max().unwrap(),
-        SelectFun::Avg => posval.iter().map(|i| i.value).sum::<u64>() / (posval.len() as u64),
-        SelectFun::Median => {
+        Op::First => posval.first().unwrap().value,
+        Op::Mid => posval.last().unwrap().value,
+        Op::Last => posval.last().unwrap().value,
+        Op::Min => posval.iter().map(|i| i.value).min().unwrap(),
+        Op::Max => posval.iter().map(|i| i.value).max().unwrap(),
+        Op::Avg => posval.iter().map(|i| i.value).sum::<u64>() / (posval.len() as u64),
+        Op::Median => {
             let mut values: Vec<u64> = posval.iter().map(|i| i.value).collect();
             let n = values.len();
             let mid = n / 2;
@@ -300,10 +301,9 @@ impl Map {
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
         let slice = PyBufferRef::new(view)?;
-        let inner =
-            Arc::new(fst::Map::new(slice).map_err(|err| {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string())
-            })?);
+        let inner = Arc::new(
+            fst::Map::new(slice).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?,
+        );
         Ok(Self { inner })
     }
 
@@ -453,13 +453,13 @@ impl Map {
     }
 
     #[classmethod]
-    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
+    #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn union(
         _cls: &Bound<'_, PyType>,
         path: PathBuf,
         maps: &Bound<'_, PyTuple>,
-        select: SelectFun,
+        select: Op,
     ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).union();
@@ -467,13 +467,13 @@ impl Map {
     }
 
     #[classmethod]
-    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
+    #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn intersection(
         _cls: &Bound<'_, PyType>,
         path: PathBuf,
         maps: &Bound<'_, PyTuple>,
-        select: SelectFun,
+        select: Op,
     ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).intersection();
@@ -481,13 +481,13 @@ impl Map {
     }
 
     #[classmethod]
-    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
+    #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn difference(
         _cls: &Bound<'_, PyType>,
         path: PathBuf,
         maps: &Bound<'_, PyTuple>,
-        select: SelectFun,
+        select: Op,
     ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).difference();
@@ -495,13 +495,13 @@ impl Map {
     }
 
     #[classmethod]
-    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
+    #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
         _cls: &Bound<'_, PyType>,
         path: PathBuf,
         maps: &Bound<'_, PyTuple>,
-        select: SelectFun,
+        select: Op,
     ) -> PyResult<Option<Buffer>> {
         let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).symmetric_difference();
