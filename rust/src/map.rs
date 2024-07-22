@@ -250,7 +250,7 @@ fn mapvec(this: &Map, others: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> 
 fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
     let mut builder = OpBuilder::new();
     for map in maps {
-        builder.push(map.stream())
+        builder.push(map.stream());
     }
     builder
 }
@@ -418,6 +418,7 @@ impl Map {
     }
 
     #[pyo3(signature = (path, *others))]
+    #[allow(clippy::needless_pass_by_value)]
     fn union(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).union();
@@ -425,6 +426,7 @@ impl Map {
     }
 
     #[pyo3(signature = (path, *others))]
+    #[allow(clippy::needless_pass_by_value)]
     fn intersection(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).intersection();
@@ -432,6 +434,7 @@ impl Map {
     }
 
     #[pyo3(signature = (path, *others))]
+    #[allow(clippy::needless_pass_by_value)]
     fn difference(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
         let maps = mapvec(self, others)?;
         let stream = opbuilder(&maps).difference();
@@ -439,6 +442,7 @@ impl Map {
     }
 
     #[pyo3(signature = (path, *others))]
+    #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
         &self,
         path: PathBuf,
