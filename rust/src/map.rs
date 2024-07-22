@@ -5,7 +5,11 @@ use fst::{
     IntoStreamer, Streamer,
 };
 use ouroboros::self_referencing;
-use pyo3::{buffer::PyBuffer, prelude::*, types::PyTuple};
+use pyo3::{
+    buffer::PyBuffer,
+    prelude::*,
+    types::{PyTuple, PyType},
+};
 use std::{
     borrow::Cow,
     fs,
@@ -177,6 +181,32 @@ impl Map {
         Ok(Self { inner })
     }
 
+    /// Build a Map from an iterable of items `(key: bytes, value: int)`
+    /// and write it to the given path.
+    /// If path is `:memory:`, returns a `Buffer` containing the map data.
+    #[classmethod]
+    pub fn build(
+        _cls: &Bound<'_, PyType>,
+        iterable: &Bound<'_, PyAny>,
+        path: PathBuf,
+    ) -> PyResult<Option<Buffer>> {
+        if path == Path::new(":memory:") {
+            let buf = Vec::with_capacity(10 * (1 << 10));
+            let w = fill_from_iterable(iterable, buf)?;
+            let ret = Buffer::new(w);
+            Ok(Some(ret))
+        } else {
+            let wp = fs::OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(path)?;
+            let writer = BufWriter::with_capacity(BUFSIZE, wp);
+            fill_from_iterable(iterable, writer)?;
+            Ok(None)
+        }
+    }
+
     fn __iter__(&self) -> KeyIterator {
         self.keys()
     }
@@ -331,6 +361,7 @@ impl Map {
 
 type OpItem<'a> = (&'a [u8], &'a [IndexedValue]);
 
+#[inline]
 fn fill_from_stream<'f, I, S, F, W>(stream: I, select: F, buf: W) -> PyResult<W>
 where
     W: io::Write,
@@ -418,26 +449,4 @@ fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyRe
     builder
         .into_inner()
         .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
-}
-
-/// Build a Map from an iterable of items `(key: bytes, value: int)`
-/// and write it to the given path.
-/// If path is `:memory:`, returns a `Buffer` containing the map data.
-#[pyfunction(name = "build_map")]
-pub fn build_from_iterable(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
-    if path == Path::new(":memory:") {
-        let buf = Vec::with_capacity(10 * (1 << 10));
-        let w = fill_from_iterable(iterable, buf)?;
-        let ret = Buffer::new(w);
-        Ok(Some(ret))
-    } else {
-        let wp = fs::OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(path)?;
-        let writer = BufWriter::with_capacity(BUFSIZE, wp);
-        fill_from_iterable(iterable, writer)?;
-        Ok(None)
-    }
 }
