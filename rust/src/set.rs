@@ -1,7 +1,8 @@
-use fst::{set::Stream, Streamer};
+use fst::Streamer;
 use ouroboros::self_referencing;
-use pyo3::{buffer::PyBuffer, prelude::*, types::PyBytes};
+use pyo3::{buffer::PyBuffer, prelude::*};
 use std::{
+    borrow::Cow,
     fs,
     io::{self, BufWriter},
     path::{Path, PathBuf},
@@ -12,9 +13,35 @@ use crate::buffer::{Buffer, PyBufferRef};
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
+type PySet = fst::Set<PyBufferRef<u8>>;
+
+type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
+
+#[pyclass(name = "SetIterator")]
+#[self_referencing]
+struct KeyIterator {
+    set: Arc<PySet>,
+    str: String,
+    #[borrows(set, str)]
+    #[not_covariant]
+    stream: KeyStream<'this>,
+}
+
+#[pymethods]
+impl KeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(&mut self) -> Option<Cow<[u8]>> {
+        self.with_stream_mut(|stream| stream.next())
+            .map(|key| Cow::from(key.to_vec()))
+    }
+}
+
 #[pyclass(sequence)]
 pub struct Set {
-    inner: Arc<fst::Set<PyBufferRef<u8>>>,
+    inner: Arc<PySet>,
 }
 
 #[pymethods]
@@ -35,10 +62,11 @@ impl Set {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SetIterator>> {
-        let iter = SetIteratorBuilder {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
+        let iter = KeyIteratorBuilder {
             set: slf.inner.clone(),
-            stream_builder: |set| set.stream(),
+            str: String::new(),
+            stream_builder: |set, _| Box::new(set.stream()),
         }
         .build();
         Py::new(slf.py(), iter)
@@ -53,34 +81,10 @@ impl Set {
     }
 }
 
-#[pyclass]
-#[self_referencing]
-struct SetIterator {
-    set: Arc<fst::Set<PyBufferRef<u8>>>,
-    #[borrows(set)]
-    #[not_covariant]
-    stream: Stream<'this>,
-}
-
-#[pymethods]
-impl SetIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-        let py = slf.py();
-        match slf.with_stream_mut(|stream| stream.next()) {
-            Some(key) => {
-                let k = PyBytes::new_bound(py, key).into_py(py);
-                Some(k)
-            }
-            None => None,
-        }
-    }
-}
-
-fn fill<W: io::Write>(iterable: &Bound<'_, PyAny>, mut builder: fst::SetBuilder<W>) -> PyResult<W> {
+fn fill_from_iterable<W: io::Write>(
+    iterable: &Bound<'_, PyAny>,
+    mut builder: fst::SetBuilder<W>,
+) -> PyResult<W> {
     let iterator = iterable.iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
@@ -98,12 +102,12 @@ fn fill<W: io::Write>(iterable: &Bound<'_, PyAny>, mut builder: fst::SetBuilder<
 /// and write it to the given path.
 /// If path is `:memory:`, returns a `Buffer` containing the set data.
 #[pyfunction(name = "build_set")]
-pub fn build(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
+pub fn build_from_iterable(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buffer>> {
     if path == Path::new(":memory:") {
         let buf = Vec::with_capacity(10 * (1 << 10));
         let builder = fst::SetBuilder::new(buf)
             .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-        let w = fill(iterable, builder)?;
+        let w = fill_from_iterable(iterable, builder)?;
         let ret = Buffer::new(w);
         Ok(Some(ret))
     } else {
@@ -113,7 +117,7 @@ pub fn build(iterable: &Bound<'_, PyAny>, path: PathBuf) -> PyResult<Option<Buff
             .write(true)
             .open(path)?;
         let writer = BufWriter::with_capacity(BUFSIZE, wp);
-        fill(
+        fill_from_iterable(
             iterable,
             fst::SetBuilder::new(writer)
                 .map_err(|err| PyErr::new::<pyo3::exceptions::PyTypeError, _>(err.to_string()))?,
