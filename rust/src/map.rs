@@ -234,11 +234,10 @@ fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyRe
         .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
 }
 
-fn mapvec(this: &Map, others: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> {
-    let py = others.py();
-    let mut maps: Vec<Arc<PyMap>> = Vec::with_capacity(others.len() + 1);
-    maps.push(this.inner.clone());
-    for other in others.iter() {
+fn mapvec(tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> {
+    let py = tuple.py();
+    let mut maps: Vec<Arc<PyMap>> = Vec::with_capacity(tuple.len());
+    for other in tuple.iter() {
         let o: Py<Map> = other.extract()?;
         let map = o.borrow(py);
         let map = map.inner.clone();
@@ -453,54 +452,58 @@ impl Map {
         .build()
     }
 
-    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
+    #[classmethod]
+    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn union(
-        &self,
+        _cls: &Bound<'_, PyType>,
         path: PathBuf,
-        others: &Bound<'_, PyTuple>,
+        maps: &Bound<'_, PyTuple>,
         select: SelectFun,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
+        let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).union();
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
+    #[classmethod]
+    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn intersection(
-        &self,
+        _cls: &Bound<'_, PyType>,
         path: PathBuf,
-        others: &Bound<'_, PyTuple>,
+        maps: &Bound<'_, PyTuple>,
         select: SelectFun,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
+        let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).intersection();
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
+    #[classmethod]
+    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn difference(
-        &self,
+        _cls: &Bound<'_, PyType>,
         path: PathBuf,
-        others: &Bound<'_, PyTuple>,
+        maps: &Bound<'_, PyTuple>,
         select: SelectFun,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
+        let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).difference();
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
-    #[pyo3(signature = (path, *others, select=SelectFun::Last))]
+    #[classmethod]
+    #[pyo3(signature = (path, *maps, select=SelectFun::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
-        &self,
+        _cls: &Bound<'_, PyType>,
         path: PathBuf,
-        others: &Bound<'_, PyTuple>,
+        maps: &Bound<'_, PyTuple>,
         select: SelectFun,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
+        let maps = mapvec(maps)?;
         let stream = opbuilder(&maps).symmetric_difference();
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
