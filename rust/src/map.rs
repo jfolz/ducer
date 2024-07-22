@@ -262,10 +262,11 @@ pub enum Op {
     Median,
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn select_value(sf: Op, posval: &[IndexedValue]) -> u64 {
     match sf {
         Op::First => posval.first().unwrap().value,
-        Op::Mid => posval.last().unwrap().value,
+        Op::Mid => posval[posval.len() / 2].value,
         Op::Last => posval.last().unwrap().value,
         Op::Min => posval.iter().map(|i| i.value).min().unwrap(),
         Op::Max => posval.iter().map(|i| i.value).max().unwrap(),

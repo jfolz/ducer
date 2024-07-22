@@ -6,7 +6,7 @@ use fst::{
 use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
-    exceptions::{PyIOError, PyRuntimeError, PyTypeError, PyValueError},
+    exceptions::{PyIOError, PyRuntimeError, PyValueError},
     prelude::*,
     types::{PyTuple, PyType},
 };
