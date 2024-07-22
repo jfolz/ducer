@@ -143,6 +143,97 @@ fn add_range<'m, A: Automaton>(
     builder
 }
 
+type OpItem<'a> = (&'a [u8], &'a [IndexedValue]);
+
+fn fill_from_stream<'f, I, S, F, W>(stream: I, select: F, buf: W) -> PyResult<W>
+where
+    W: io::Write,
+    S: 'f + for<'a> Streamer<'a, Item = OpItem<'a>>,
+    I: for<'a> IntoStreamer<'a, Into = S, Item = OpItem<'a>>,
+    F: Fn(&[IndexedValue]) -> u64,
+{
+    let mut stream = stream.into_stream();
+    let mut builder = fst::MapBuilder::new(buf)
+        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
+    while let Some((key, posval)) = stream.next() {
+        // TODO other options instead of last value
+        // unwrap() is OK here, since stream.next() never returns an empty slice
+        builder
+            .insert(key, select(posval))
+            .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))?;
+    }
+    builder
+        .into_inner()
+        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))
+}
+
+fn build_from_stream<'f, I, S, F>(path: &Path, stream: I, select: F) -> PyResult<Option<Buffer>>
+where
+    S: 'f + for<'a> Streamer<'a, Item = OpItem<'a>>,
+    I: for<'a> IntoStreamer<'a, Into = S, Item = OpItem<'a>>,
+    F: Fn(&[IndexedValue]) -> u64,
+{
+    if path == Path::new(":memory:") {
+        let buf = Vec::with_capacity(10 * (1 << 10));
+        let buf = fill_from_stream(stream, select, buf)?;
+        Ok(Some(Buffer::new(buf)))
+    } else {
+        let wp = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(path)?;
+        let writer = BufWriter::with_capacity(BUFSIZE, wp);
+        fill_from_stream(stream, select, writer)?;
+        Ok(None)
+    }
+}
+
+#[inline]
+fn insert_pyobject<W: io::Write>(
+    obj: &Bound<'_, PyAny>,
+    builder: &mut fst::MapBuilder<W>,
+) -> PyResult<()> {
+    let item0;
+    let (key, val) = if let Ok(tuple) = obj.downcast::<PyTuple>() {
+        let items = tuple.as_slice();
+        if items.len() != 2 {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
+            ));
+        }
+        let key = items[0].extract::<&[u8]>()?;
+        let val = items[1].extract::<u64>()?;
+        (key, val)
+    } else {
+        if obj.len()? != 2 {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
+            ));
+        }
+        item0 = obj.get_item(0)?;
+        let key = item0.extract::<&[u8]>()?;
+        let val = obj.get_item(1)?.extract::<u64>()?;
+        (key, val)
+    };
+    builder
+        .insert(key, val)
+        .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))
+}
+
+fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyResult<W> {
+    let mut builder = fst::MapBuilder::new(buf)
+        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
+    let iterator = iterable.iter()?;
+    for maybe_obj in iterator {
+        let obj = maybe_obj?;
+        insert_pyobject(&obj, &mut builder)?;
+    }
+    builder
+        .into_inner()
+        .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
+}
+
 fn mapvec(this: &Map, others: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> {
     let py = others.py();
     let mut maps: Vec<Arc<PyMap>> = Vec::with_capacity(others.len() + 1);
@@ -357,96 +448,4 @@ impl Map {
         let stream = opbuilder(&maps).symmetric_difference();
         build_from_stream(&path, stream, |posval| posval.last().unwrap().value)
     }
-}
-
-type OpItem<'a> = (&'a [u8], &'a [IndexedValue]);
-
-#[inline]
-fn fill_from_stream<'f, I, S, F, W>(stream: I, select: F, buf: W) -> PyResult<W>
-where
-    W: io::Write,
-    S: 'f + for<'a> Streamer<'a, Item = OpItem<'a>>,
-    I: for<'a> IntoStreamer<'a, Into = S, Item = OpItem<'a>>,
-    F: Fn(&[IndexedValue]) -> u64,
-{
-    let mut stream = stream.into_stream();
-    let mut builder = fst::MapBuilder::new(buf)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-    while let Some((key, posval)) = stream.next() {
-        // TODO other options instead of last value
-        // unwrap() is OK here, since stream.next() never returns an empty slice
-        builder
-            .insert(key, select(posval))
-            .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))?;
-    }
-    builder
-        .into_inner()
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))
-}
-
-fn build_from_stream<'f, I, S, F>(path: &Path, stream: I, select: F) -> PyResult<Option<Buffer>>
-where
-    S: 'f + for<'a> Streamer<'a, Item = OpItem<'a>>,
-    I: for<'a> IntoStreamer<'a, Into = S, Item = OpItem<'a>>,
-    F: Fn(&[IndexedValue]) -> u64,
-{
-    if path == Path::new(":memory:") {
-        let buf = Vec::with_capacity(10 * (1 << 10));
-        let buf = fill_from_stream(stream, select, buf)?;
-        Ok(Some(Buffer::new(buf)))
-    } else {
-        let wp = fs::OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(path)?;
-        let writer = BufWriter::with_capacity(BUFSIZE, wp);
-        fill_from_stream(stream, select, writer)?;
-        Ok(None)
-    }
-}
-
-#[inline]
-fn insert_pyobject<W: io::Write>(
-    obj: &Bound<'_, PyAny>,
-    builder: &mut fst::MapBuilder<W>,
-) -> PyResult<()> {
-    let item0;
-    let (key, val) = if let Ok(tuple) = obj.downcast::<PyTuple>() {
-        let items = tuple.as_slice();
-        if items.len() != 2 {
-            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
-            ));
-        }
-        let key = items[0].extract::<&[u8]>()?;
-        let val = items[1].extract::<u64>()?;
-        (key, val)
-    } else {
-        if obj.len()? != 2 {
-            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "map items must be sequences with length 2, e.g. tuple (key: bytes, value: int)",
-            ));
-        }
-        item0 = obj.get_item(0)?;
-        let key = item0.extract::<&[u8]>()?;
-        let val = obj.get_item(1)?.extract::<u64>()?;
-        (key, val)
-    };
-    builder
-        .insert(key, val)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string()))
-}
-
-fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyResult<W> {
-    let mut builder = fst::MapBuilder::new(buf)
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.to_string()))?;
-    let iterator = iterable.iter()?;
-    for maybe_obj in iterator {
-        let obj = maybe_obj?;
-        insert_pyobject(&obj, &mut builder)?;
-    }
-    builder
-        .into_inner()
-        .map_err(|err| PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string()))
 }
