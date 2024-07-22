@@ -116,11 +116,6 @@ impl AutomatonIterator {
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
 
-#[pyclass(mapping)]
-pub struct Map {
-    inner: Arc<PyMap>,
-}
-
 fn add_range<'m, A: Automaton>(
     mut builder: StreamBuilder<'m, A>,
     ge: Option<&[u8]>,
@@ -288,6 +283,11 @@ fn select_value(sf: SelectFun, posval: &[IndexedValue]) -> u64 {
             }
         }
     }
+}
+
+#[pyclass(mapping)]
+pub struct Map {
+    inner: Arc<PyMap>,
 }
 
 #[pymethods]
