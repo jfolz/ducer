@@ -23,9 +23,9 @@ path = "rust/Cargo.toml"
 binding = "PyO3"
 
 [tool.cibuildwheel]
-environment = "PIP_ONLY_BINARY=:all:"
+environment = "PIP_ONLY_BINARY=:all: CARGO_HOME=/usr/local/"
 skip = "*_i686 pp* *musllinux* cp{31[!01],3[!01]?,[!3]*}-win32"
 build-verbosity = 1
-before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | CARGO_HOME=/usr/local/ sh -s -- -y --profile minimal"
+before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
 #test-requires = "pytest>=5.3.2 numpy Pillow>=7.0.0"
 #test-command = "pytest {project}/test -vv"
