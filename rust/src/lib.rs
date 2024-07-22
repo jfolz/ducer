@@ -13,8 +13,8 @@ fn _fst(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encoding::encode_int, m)?)?;
     m.add_function(wrap_pyfunction!(encoding::decode_int, m)?)?;
     m.add_class::<map::Map>()?;
+    m.add_class::<map::Op>()?;
     m.add_class::<set::Set>()?;
-    m.add_function(wrap_pyfunction!(set::build_from_iterable, m)?)?;
     m.add_class::<automaton::AutomatonGraph>()?;
     Ok(())
 }
