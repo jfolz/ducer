@@ -14,7 +14,11 @@ dynamic = ["version"]
 find = { where = ["simplefst"] }
 
 [build-system]
-requires = ["setuptools", "setuptools-rust", "setuptools_scm"]
+requires = [
+    "setuptools>=71.1.0",
+    "setuptools-rust>=1.9.0",
+    "setuptools_scm>=8.1.0",
+]
 build-backend = "setuptools.build_meta"
 
 [[tool.setuptools-rust.ext-modules]]
@@ -27,5 +31,6 @@ environment = "PIP_ONLY_BINARY=:all: CARGO_HOME=/usr/local/"
 skip = "*_i686 pp* *musllinux* cp{31[!01],3[!01]?,[!3]*}-win32"
 build-verbosity = 1
 before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
+build-frontend = "build"
 #test-requires = "pytest>=5.3.2 numpy Pillow>=7.0.0"
 #test-command = "pytest {project}/test -vv"
