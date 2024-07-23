@@ -29,7 +29,7 @@ args = ["--profile", "prod"]
 
 [tool.cibuildwheel]
 environment = "PIP_ONLY_BINARY=:all: CARGO_HOME=/usr/local/"
-skip = "*_i686 pp* *musllinux* cp{31[!01],3[!01]?,[!3]*}-win32"
+skip = "*_i686 pp* *musllinux* *-win32"
 build-verbosity = 1
 #before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
 #before-build = "cargo clean --manifest-path rust/Cargo.toml"
