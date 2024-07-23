@@ -1,5 +1,5 @@
 [project]
-name = "simplefst"
+name = "ducer"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",
@@ -11,7 +11,7 @@ dynamic = ["version"]
 [tool.setuptools_scm]
 
 [tool.setuptools.packages]
-find = { where = ["simplefst"] }
+find = { where = ["ducer"] }
 
 [build-system]
 requires = [
