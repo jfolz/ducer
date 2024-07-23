@@ -15,7 +15,7 @@ jobs:
             arch: aarch64
           - os: macos-14
             arch: x86_64
-          - os: windows-latest
+          - os: windows-2019
             arch: aarch64
     steps:
       - uses: actions/checkout@v4
