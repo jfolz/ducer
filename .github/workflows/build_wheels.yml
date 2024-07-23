@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-12, macos-14, windows-2019]
+        os: [ubuntu-24.04, macos-12, macos-14, windows-2019]
         arch: [x86_64, aarch64]
         exclude:
           - os: macos-12
@@ -46,6 +46,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.19.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+          CIBW_CONTAINER_ENGINE: "docker; create_args: --memory=8G"
           CIBW_ENVIRONMENT_PASS_LINUX: CARGO_BUILD_JOBS CIBW_BEFORE_ALL CARGO_HOME
       - uses: actions/upload-artifact@v4
         with:
