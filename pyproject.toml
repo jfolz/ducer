@@ -28,7 +28,6 @@ binding = "PyO3"
 args = ["--profile", "prod"]
 
 [tool.cibuildwheel]
-environment = "PIP_ONLY_BINARY=:all: CARGO_HOME=/usr/local/"
 skip = "*_i686 pp* *musllinux* *-win32"
 build-verbosity = 1
 #before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
