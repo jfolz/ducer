@@ -32,11 +32,22 @@ jobs:
       - name: Setup Rust in containers
         if: runner.os == 'Linux'
         run: |
-          echo "CIBW_BEFORE_ALL=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal && (while true; do echo 'Memory usage:'; free -m; echo 'Top processes:'; top -bn1; echo '--------------------------'; sleep 60; done &)" >> $GITHUB_ENV
+          echo "CIBW_BEFORE_ALL=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal" >> $GITHUB_ENV
           echo "CARGO_HOME=/usr/local/" >> $GITHUB_ENV
       - name: Limit parallel build jobs with QEMU builds
         if: runner.os == 'Linux' && matrix.arch == 'aarch64'
         run: echo "CARGO_BUILD_JOBS=1" >> $GITHUB_ENV
+      - name: Debug output memory and processes
+        run: |
+          # Print memory usage and start monitoring
+          while true; do
+            echo "Memory usage:"
+            free -m
+            echo "Top processes:"
+            top -bn1
+            echo "--------------------------"
+            sleep 60
+          done &
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.19.1
         env:
