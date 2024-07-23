@@ -25,6 +25,7 @@ build-backend = "setuptools.build_meta"
 target = "_fst"
 path = "rust/Cargo.toml"
 binding = "PyO3"
+args = ["--profile", "prod"]
 
 [tool.cibuildwheel]
 environment = "PIP_ONLY_BINARY=:all: CARGO_HOME=/usr/local/"

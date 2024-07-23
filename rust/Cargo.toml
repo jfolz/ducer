@@ -13,7 +13,8 @@ pyo3 = { version = "0.22.1", features = ["extension-module"] }
 fst = "0.4.7"
 ouroboros = "0.18.4"
 
-#[profile.release]
-#strip = true      # Automatically strip symbols from the binary.
-#lto = true        # Enable LTO
-#codegen-units = 1 # Can enable additional optimizations
+[profile.prod]
+inherits = "release"
+strip = true         # Automatically strip symbols from the binary.
+lto = true           # Enable LTO
+codegen-units = 1    # Can enable additional optimizations
