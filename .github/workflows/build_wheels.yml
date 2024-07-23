@@ -38,13 +38,14 @@ jobs:
         if: runner.os == 'Linux' && matrix.arch == 'aarch64'
         run: echo "CARGO_BUILD_JOBS=1" >> $GITHUB_ENV
       - name: Debug output memory and processes
+        if: runner.os == 'Linux'
         run: |
           # Print memory usage and start monitoring
           while true; do
             echo "Memory usage:"
             free -m
             echo "Top processes:"
-            top -bn1
+            top -bn1 | head -n 17
             echo "--------------------------"
             sleep 60
           done &
