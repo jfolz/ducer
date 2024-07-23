@@ -16,7 +16,7 @@ jobs:
           - os: macos-14
             arch: x86_64
           - os: windows-latest
-            arch: arm64
+            arch: aarch64
     steps:
       - uses: actions/checkout@v4
       - name: Set up QEMU
