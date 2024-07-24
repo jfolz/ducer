@@ -2,8 +2,7 @@ import mmap
 import pytest
 import contextlib
 
-from ducer import Map
-from ducer import Automaton
+from ducer import Automaton, Map, Op
 
 
 S1 = "key1"
@@ -52,16 +51,24 @@ def test_map_init_memory():
     create_map()
 
 
-# TODO test raises non-bytes key
+def test_map_build_not_bytes():
+    with pytest.raises(TypeError):
+        Map.build([("key", 0)], ":memory:")
 
 
-# TODO test raises non-int value
+def test_map_build_not_int():
+    with pytest.raises(TypeError):
+        Map.build([(b"key", 0.5)], ":memory:")
 
 
-# TODO test raises negative value
+def test_map_build_negative():
+    with pytest.raises(OverflowError):
+        Map.build([(b"key", -1)], ":memory:")
 
 
-# TODO test raises value >= 2**64
+def test_map_build_too_large():
+    with pytest.raises(OverflowError):
+        Map.build([(b"key", 2**64)], ":memory:")
 
 
 def test_map_init_read(tmp_path):
@@ -356,4 +363,50 @@ def test_map_union():
     assert I3 in items
 
 
-# TODO test select=Op.*
+def op_test_maps():
+    return (
+        Map(Map.build({K1: V1}.items(), ":memory:")),
+        Map(Map.build({K1: V2}.items(), ":memory:")),
+        Map(Map.build({K1: V3}.items(), ":memory:")),
+    )
+
+
+def test_map_union_multiple_first():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.First))
+    assert m[K1] == V1
+
+
+def test_map_union_multiple_mid():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Mid))
+    assert m[K1] == V2
+
+
+def test_map_union_multiple_last():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Last))
+    assert m[K1] == V3
+
+
+def test_map_union_multiple_min():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Min))
+    assert m[K1] == V1
+
+
+def test_map_union_multiple_avg():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Avg))
+    assert m[K1] == (V1 + V2 + V3) // 3
+
+
+def test_map_union_multiple_max():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Max))
+    assert m[K1] == V3
+
+
+def test_map_union_multiple_median_odd():
+    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Median))
+    assert m[K1] == V2
+
+
+def test_map_union_multiple_median_even():
+    m1, m2, _ = op_test_maps()
+    m = Map(Map.union(":memory:", m1, m2, select=Op.Median))
+    assert m[K1] == (V1 + V2) // 2
