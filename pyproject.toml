@@ -64,8 +64,10 @@ args = ["--profile", "prod"]
 [tool.cibuildwheel]
 skip = "*_i686 pp* *musllinux* *-win32"
 build-verbosity = 1
-#before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
-#before-build = "cargo clean --manifest-path rust/Cargo.toml"
 build-frontend = "build"
-#test-requires = "pytest>=5.3.2 numpy Pillow>=7.0.0"
-#test-command = "pytest {project}/test -vv"
+test-requires = "pytest>=8.3.1"
+test-command = "pytest -vv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
