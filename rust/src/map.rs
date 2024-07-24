@@ -7,7 +7,7 @@ use fst::{
 use ouroboros::self_referencing;
 use pyo3::{
     buffer::PyBuffer,
-    exceptions::{PyIOError, PyRuntimeError, PyTypeError, PyValueError},
+    exceptions::{PyIOError, PyKeyError, PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyTuple, PyType},
 };
@@ -338,8 +338,12 @@ impl Map {
         self.keys()
     }
 
-    fn __getitem__(&self, key: &[u8]) -> Option<u64> {
-        self.inner.get(key)
+    fn __getitem__(&self, key: &[u8]) -> PyResult<u64> {
+        if let Some(val) = self.inner.get(key) {
+            Ok(val)
+        } else {
+            Err(PyErr::new::<PyKeyError, _>(Cow::from(key.to_owned())))
+        }
     }
 
     fn __contains__(&self, key: &[u8]) -> bool {
@@ -348,6 +352,11 @@ impl Map {
 
     fn __len__(&self) -> usize {
         self.inner.len()
+    }
+
+    #[pyo3(signature=(key, default=None))]
+    fn get(&self, key: &[u8], default: Option<u64>) -> Option<u64> {
+        self.inner.get(key).or_else(|| default)
     }
 
     fn items(&self) -> ItemIterator {
