@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Map.__getitem__` correctly raises KeyError
 
 ### Added
-- Map.get with optional default
+- `Map.get` with optional default
 - `Buffer.__len__`
 
 
