@@ -89,6 +89,10 @@ impl Buffer {
             drop(CString::from_raw(fmt));
         }
     }
+
+    fn __len__(&self) -> usize {
+        self.data.len()
+    }
 }
 
 pub struct PyBufferRef<T: Element> {
