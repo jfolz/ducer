@@ -58,8 +58,7 @@ e.g., using the builtin mmap:
 
 ```Python
 with open("path/to/my.map", "rb") as f:
-    mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
-    mm.madvise(mmap.MADV_RANDOM)
+    mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
     m = ducer.Map(mm)
 ```
 

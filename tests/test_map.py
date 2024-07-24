@@ -2,7 +2,8 @@ import mmap
 import pytest
 import contextlib
 
-import ducer
+from ducer import Map
+from ducer import Automaton
 
 
 S1 = "key1"
@@ -32,11 +33,11 @@ DICT12O = dict((I1, I2, IO))
 
 
 def build_map(source=DICT12, path=":memory:"):
-    return ducer.Map.build(source.items(), path)
+    return Map.build(source.items(), path)
 
 
 def create_map(source=DICT12):
-    return ducer.Map(build_map(source=source))
+    return Map(build_map(source=source))
 
 
 def test_map_build_memory():
@@ -68,7 +69,7 @@ def test_map_init_read(tmp_path):
     build_map(path=path)
     with open(path, "rb") as f:
         data = f.read()
-    ducer.Map(data)
+    Map(data)
 
 
 @contextlib.contextmanager
@@ -76,9 +77,8 @@ def init_mmap(tmp_path):
     path = tmp_path / "test.map"
     build_map(path=path)
     with open(path, "rb") as fp:
-        mm = mmap.mmap(fp.fileno(), 0, prot=mmap.PROT_READ)
-        mm.madvise(mmap.MADV_RANDOM)
-        yield ducer.Map(mm)
+        mm = mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
+        yield Map(mm)
 
 
 def test_map_init_mmap(tmp_path):
@@ -216,7 +216,7 @@ def test_map_range_lt_ge():
 
 def test_map_search_always():
     m = create_map()
-    a = ducer.Automaton.always()
+    a = Automaton.always()
     items = list(m.search(a))
     for i in DICT12.items():
         assert i in items
@@ -224,21 +224,21 @@ def test_map_search_always():
 
 def test_map_search_always_complement():
     m = create_map()
-    a = ducer.Automaton.always().complement()
+    a = Automaton.always().complement()
     items = list(m.search(a))
     assert not items
 
 
 def test_map_search_never():
     m = create_map()
-    a = ducer.Automaton.never()
+    a = Automaton.never()
     items = list(m.search(a))
     assert not items
 
 
 def test_map_search_never_complement():
     m = create_map()
-    a = ducer.Automaton.never().complement()
+    a = Automaton.never().complement()
     items = list(m.search(a))
     for i in DICT12.items():
         assert i in items
@@ -246,7 +246,7 @@ def test_map_search_never_complement():
 
 def test_map_search_str():
     m = create_map()
-    a = ducer.Automaton.str("key1")
+    a = Automaton.str("key1")
     items = list(m.search(a))
     assert I1 in items
     assert I2 not in items
@@ -254,7 +254,7 @@ def test_map_search_str():
 
 def test_map_search_str_complement():
     m = create_map()
-    a = ducer.Automaton.str("key1").complement()
+    a = Automaton.str("key1").complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 in items
@@ -262,7 +262,7 @@ def test_map_search_str_complement():
 
 def test_map_search_subsequence():
     m = create_map()
-    a = ducer.Automaton.subsequence("k1")
+    a = Automaton.subsequence("k1")
     items = list(m.search(a))
     assert I1 in items
     assert I2 not in items
@@ -270,7 +270,7 @@ def test_map_search_subsequence():
 
 def test_map_search_subsequence_complement():
     m = create_map()
-    a = ducer.Automaton.subsequence("k1").complement()
+    a = Automaton.subsequence("k1").complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 in items
@@ -278,7 +278,7 @@ def test_map_search_subsequence_complement():
 
 def test_map_search_starts_with():
     m = create_map(source=DICT12O)
-    a = ducer.Automaton.str("key").starts_with()
+    a = Automaton.str("key").starts_with()
     items = list(m.search(a))
     assert I1 in items
     assert I2 in items
@@ -287,7 +287,7 @@ def test_map_search_starts_with():
 
 def test_map_search_starts_with_complement():
     m = create_map(source=DICT12O)
-    a = ducer.Automaton.str("key").starts_with().complement()
+    a = Automaton.str("key").starts_with().complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 not in items
@@ -296,8 +296,8 @@ def test_map_search_starts_with_complement():
 
 def test_map_search_union():
     m = create_map(source=DICT12O)
-    a1 = ducer.Automaton.str("key1")
-    a2 = ducer.Automaton.str("oth").starts_with()
+    a1 = Automaton.str("key1")
+    a2 = Automaton.str("oth").starts_with()
     a = a1.union(a2)
     items = list(m.search(a))
     assert I1 in items
@@ -307,8 +307,8 @@ def test_map_search_union():
 
 def test_map_search_intersection():
     m = create_map(source=DICT123)
-    a1 = ducer.Automaton.str("key1").complement()
-    a2 = ducer.Automaton.str("key3").complement()
+    a1 = Automaton.str("key1").complement()
+    a2 = Automaton.str("key3").complement()
     a = a1.intersection(a2)
     items = list(m.search(a))
     assert I1 not in items
@@ -319,7 +319,7 @@ def test_map_search_intersection():
 def test_map_difference():
     m1 = create_map(source=DICT123)
     m2 = create_map(source=DICT23)
-    m = ducer.Map(ducer.Map.difference(":memory:", m1, m2))
+    m = Map(Map.difference(":memory:", m1, m2))
     items = list(m.items())
     assert I1 in items
     assert I2 not in items
@@ -329,7 +329,7 @@ def test_map_difference():
 def test_map_intersection():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = ducer.Map(ducer.Map.intersection(":memory:", m1, m2))
+    m = Map(Map.intersection(":memory:", m1, m2))
     items = list(m.items())
     assert I1 not in items
     assert I2 in items
@@ -339,7 +339,7 @@ def test_map_intersection():
 def test_map_symmetric_difference():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = ducer.Map(ducer.Map.symmetric_difference(":memory:", m1, m2))
+    m = Map(Map.symmetric_difference(":memory:", m1, m2))
     items = list(m.items())
     assert I1 in items
     assert I2 not in items
@@ -349,7 +349,7 @@ def test_map_symmetric_difference():
 def test_map_union():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = ducer.Map(ducer.Map.union(":memory:", m1, m2))
+    m = Map(Map.union(":memory:", m1, m2))
     items = list(m.items())
     assert I1 in items
     assert I2 in items
