@@ -51,6 +51,18 @@ def test_map_init_memory():
     create_map()
 
 
+# TODO test raises non-bytes key
+
+
+# TODO test raises non-int value
+
+
+# TODO test raises negative value
+
+
+# TODO test raises value >= 2**64
+
+
 def test_map_init_read(tmp_path):
     path = tmp_path / "test.map"
     build_map(path=path)
