@@ -246,8 +246,26 @@ impl Set {
         self.inner.len()
     }
 
+    fn __eq__(&self, other: &Set) -> bool {
+        self.inner.len() == other.inner.len() && {
+            let mut s = self.inner.stream();
+            let mut o = other.inner.stream();
+            loop {
+                match (s.next(), o.next()) {
+                    (Some(ks), Some(ko)) => {
+                        if ks != ko {
+                            return false;
+                        }
+                    }
+                    (None, None) => return true,
+                    _ => return false,
+                }
+            }
+        }
+    }
+
     fn __ge__(&self, other: &Set) -> bool {
-        self.inner.is_superset(other.inner.stream())
+        self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
     }
 
     fn __gt__(&self, other: &Set) -> bool {
@@ -255,7 +273,7 @@ impl Set {
     }
 
     fn __le__(&self, other: &Set) -> bool {
-        self.inner.is_subset(other.inner.stream())
+        self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
     }
 
     fn __lt__(&self, other: &Set) -> bool {
