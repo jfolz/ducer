@@ -23,7 +23,10 @@ jobs:
         uses: catchpoint/workflow-telemetry-action@v2
         with:
           job_summary: true
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v3.2.0
