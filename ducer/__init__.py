@@ -1,3 +1,10 @@
+from importlib import metadata
+
 from ._fst import *
 
-__version__ = "0.2.1"
+
+try:
+    __version__ = metadata.version("ducer")
+except metadata.PackageNotFoundError:
+    __version__ = "0.2.2"
+del metadata
