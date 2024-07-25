@@ -131,6 +131,28 @@ def test_set_issuperset_false():
     assert not s1.issuperset(s2)
 
 
+def test_set_eq_true():
+    s1 = create_set(source=SET12)
+    s2 = create_set(source=SET12)
+    assert s1 == s2
+
+
+def test_set_eq_false():
+    s1 = create_set(source=SET12)
+    s2 = create_set(source=SET123)
+    assert s1 != s2
+    assert s2 != s1
+    s1 = create_set(source=SET12)
+    s2 = create_set(source=SET23)
+    assert s1 != s2
+    assert s2 != s1
+
+
+def test_set_eq_false_other():
+    s = create_set()
+    assert s != 7
+
+
 def test_set_lt_true():
     s1 = create_set(source=SET1)
     s2 = create_set(source=SET12)
