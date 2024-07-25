@@ -196,9 +196,15 @@ impl Set {
         Ok(Self { inner })
     }
 
+    /// Since `Set` is stateless, returns self.
+    fn copy<'a>(slf: PyRef<'a, Self>) -> PyRef<'a, Self> {
+        slf
+    }
+
     /// Build a Set from an iterable of `bytes`
     /// and write it to the given path.
     /// If path is `:memory:`, returns a `Buffer` containing the set data.
+    /// Path can be `str` or `pathlib.Path`.
     #[classmethod]
     pub fn build(
         _cls: &Bound<'_, PyType>,
