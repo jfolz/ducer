@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Set.isdisjoint`
 - `Set.issubset`
 - `Set.issuperset`
+- `Set.__ge__`
+- `Set.__gt__`
+- `Set.__le__`
+- `Set.__lt__`
 
 
 ## [0.2.1] - 2024-07-24

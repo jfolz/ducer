@@ -246,6 +246,22 @@ impl Set {
         self.inner.len()
     }
 
+    fn __ge__(&self, other: &Set) -> bool {
+        self.inner.is_superset(other.inner.stream())
+    }
+
+    fn __gt__(&self, other: &Set) -> bool {
+        self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
+    }
+
+    fn __le__(&self, other: &Set) -> bool {
+        self.inner.is_subset(other.inner.stream())
+    }
+
+    fn __lt__(&self, other: &Set) -> bool {
+        self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
+    }
+
     fn isdisjoint(&self, other: &Set) -> bool {
         self.inner.is_disjoint(other.inner.stream())
     }

@@ -131,6 +131,54 @@ def test_set_issuperset_false():
     assert not s1.issuperset(s2)
 
 
+def test_set_lt_true():
+    s1 = create_set(source=SET1)
+    s2 = create_set(source=SET12)
+    assert s1 < s2
+
+
+def test_set_lt_false():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET123)
+    assert not s1 < s2
+
+
+def test_set_le_true():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET123)
+    assert s1 <= s2
+
+
+def test_set_le_false():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET123)
+    assert not s1 < s2
+
+
+def test_set_gt_true():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET23)
+    assert s1 > s2
+
+
+def test_set_gt_false():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET123)
+    assert not s1 > s2
+
+
+def test_set_ge_true():
+    s1 = create_set(source=SET123)
+    s2 = create_set(source=SET123)
+    assert s1 >= s2
+
+
+def test_set_ge_false():
+    s1 = create_set(source=SET12)
+    s2 = create_set(source=SET123)
+    assert not s1 >= s2
+
+
 def test_set_keys():
     m = create_set()
     for k1, k2 in zip(m.keys(), sorted(SET12)):
