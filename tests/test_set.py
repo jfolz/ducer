@@ -366,7 +366,7 @@ def test_set_search_intersection():
 def test_set_difference():
     m1 = create_set(source=SET123)
     m2 = create_set(source=SET23)
-    m = Set(Set.difference(":memory:", m1, m2))
+    m = Set(m1.difference(":memory:", m2))
     items = list(m)
     assert K1 in items
     assert K2 not in items
@@ -376,7 +376,7 @@ def test_set_difference():
 def test_set_intersection():
     m1 = create_set(source=SET12)
     m2 = create_set(source=SET23)
-    m = Set(Set.intersection(":memory:", m1, m2))
+    m = Set(m1.intersection(":memory:", m2))
     items = list(m)
     assert K1 not in items
     assert K2 in items
@@ -386,7 +386,7 @@ def test_set_intersection():
 def test_set_symmetric_difference():
     m1 = create_set(source=SET12)
     m2 = create_set(source=SET23)
-    m = Set(Set.symmetric_difference(":memory:", m1, m2))
+    m = Set(m1.symmetric_difference(":memory:", m2))
     items = list(m)
     assert K1 in items
     assert K2 not in items
@@ -396,7 +396,7 @@ def test_set_symmetric_difference():
 def test_set_union():
     m1 = create_set(source=SET1)
     m2 = create_set(source=SET23)
-    m = Set(Set.union(":memory:", m1, m2))
+    m = Set(m1.union(":memory:", m2))
     assert K1 in m
     assert K2 in m
     assert K3 in m
@@ -405,7 +405,7 @@ def test_set_union():
 def test_set_union_multiple():
     m1 = create_set(source=SET12)
     m2 = create_set(source=SET23)
-    m = Set(Set.union(":memory:", m1, m2))
+    m = Set(m1.union(":memory:", m2))
     assert K1 in m
     assert K2 in m
     assert K3 in m

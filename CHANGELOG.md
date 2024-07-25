@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
--
+- Compatibility with builtins: `difference`, `intersection`,
+  `symmetric_difference`, `union` are no longer classmethods
 
 ### Fixed
 -

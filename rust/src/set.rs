@@ -155,22 +155,23 @@ fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyRe
         .map_err(|err| PyErr::new::<PyIOError, _>(err.to_string()))
 }
 
-fn setvec(tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PySet>>> {
+fn setvec(first: &Set, tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PySet>>> {
     let py = tuple.py();
-    let mut maps: Vec<Arc<PySet>> = Vec::with_capacity(tuple.len());
+    let mut sets: Vec<Arc<PySet>> = Vec::with_capacity(tuple.len());
+    sets.push(first.inner.clone());
     for other in tuple.iter() {
         let o: Py<Set> = other.extract()?;
         let set = o.borrow(py);
         let set = set.inner.clone();
-        maps.push(set);
+        sets.push(set);
     }
-    Ok(maps)
+    Ok(sets)
 }
 
-fn opbuilder(maps: &Vec<Arc<PySet>>) -> OpBuilder {
+fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
     let mut builder = OpBuilder::new();
-    for map in maps {
-        builder.push(map.stream());
+    for set in sets {
+        builder.push(set.stream());
     }
     builder
 }
@@ -308,9 +309,9 @@ impl Set {
         KeyIteratorBuilder {
             set: self.inner.clone(),
             str,
-            stream_builder: |map, str| {
+            stream_builder: |set, str| {
                 Box::new(
-                    add_range(map.search(Str::new(str).starts_with()), ge, gt, le, lt)
+                    add_range(set.search(Str::new(str).starts_with()), ge, gt, le, lt)
                         .into_stream(),
                 )
             },
@@ -330,8 +331,8 @@ impl Set {
         KeyIteratorBuilder {
             set: self.inner.clone(),
             str,
-            stream_builder: |map, str| {
-                Box::new(add_range(map.search(Subsequence::new(str)), ge, gt, le, lt).into_stream())
+            stream_builder: |set, str| {
+                Box::new(add_range(set.search(Subsequence::new(str)), ge, gt, le, lt).into_stream())
             },
         }
         .build()
@@ -349,8 +350,8 @@ impl Set {
         AutomatonIteratorBuilder {
             set: self.inner.clone(),
             automaton: automaton.get(),
-            stream_builder: |map, automaton| {
-                add_range(map.search(automaton.get()), ge, gt, le, lt).into_stream()
+            stream_builder: |set, automaton| {
+                add_range(set.search(automaton.get()), ge, gt, le, lt).into_stream()
             },
         }
         .build()
@@ -367,60 +368,44 @@ impl Set {
         KeyIteratorBuilder {
             set: self.inner.clone(),
             str: String::new(),
-            stream_builder: |map, _| Box::new(add_range(map.range(), ge, gt, le, lt).into_stream()),
+            stream_builder: |set, _| Box::new(add_range(set.range(), ge, gt, le, lt).into_stream()),
         }
         .build()
     }
 
-    #[classmethod]
-    #[pyo3(signature = (path, *maps))]
+    #[pyo3(signature = (path, *sets))]
     #[allow(clippy::needless_pass_by_value)]
-    fn union(
-        _cls: &Bound<'_, PyType>,
-        path: PathBuf,
-        maps: &Bound<'_, PyTuple>,
-    ) -> PyResult<Option<Buffer>> {
-        let maps = setvec(maps)?;
-        let stream = opbuilder(&maps).union();
+    fn union(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, sets)?;
+        let stream = opbuilder(&sets).union();
         build_from_stream(&path, stream)
     }
 
-    #[classmethod]
-    #[pyo3(signature = (path, *maps))]
+    #[pyo3(signature = (path, *sets))]
     #[allow(clippy::needless_pass_by_value)]
-    fn intersection(
-        _cls: &Bound<'_, PyType>,
-        path: PathBuf,
-        maps: &Bound<'_, PyTuple>,
-    ) -> PyResult<Option<Buffer>> {
-        let maps = setvec(maps)?;
-        let stream = opbuilder(&maps).intersection();
+    fn intersection(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, sets)?;
+        let stream = opbuilder(&sets).intersection();
         build_from_stream(&path, stream)
     }
 
-    #[classmethod]
-    #[pyo3(signature = (path, *maps))]
+    #[pyo3(signature = (path, *sets))]
     #[allow(clippy::needless_pass_by_value)]
-    fn difference(
-        _cls: &Bound<'_, PyType>,
-        path: PathBuf,
-        maps: &Bound<'_, PyTuple>,
-    ) -> PyResult<Option<Buffer>> {
-        let maps = setvec(maps)?;
-        let stream = opbuilder(&maps).difference();
+    fn difference(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, sets)?;
+        let stream = opbuilder(&sets).difference();
         build_from_stream(&path, stream)
     }
 
-    #[classmethod]
-    #[pyo3(signature = (path, *maps))]
+    #[pyo3(signature = (path, *sets))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
-        _cls: &Bound<'_, PyType>,
+        &self,
         path: PathBuf,
-        maps: &Bound<'_, PyTuple>,
+        sets: &Bound<'_, PyTuple>,
     ) -> PyResult<Option<Buffer>> {
-        let maps = setvec(maps)?;
-        let stream = opbuilder(&maps).symmetric_difference();
+        let sets = setvec(self, sets)?;
+        let stream = opbuilder(&sets).symmetric_difference();
         build_from_stream(&path, stream)
     }
 }

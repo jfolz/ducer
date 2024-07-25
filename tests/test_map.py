@@ -326,7 +326,7 @@ def test_map_search_intersection():
 def test_map_difference():
     m1 = create_map(source=DICT123)
     m2 = create_map(source=DICT23)
-    m = Map(Map.difference(":memory:", m1, m2))
+    m = Map(m1.difference(":memory:", m2))
     items = list(m.items())
     assert I1 in items
     assert I2 not in items
@@ -336,7 +336,7 @@ def test_map_difference():
 def test_map_intersection():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = Map(Map.intersection(":memory:", m1, m2))
+    m = Map(m1.intersection(":memory:", m2))
     items = list(m.items())
     assert I1 not in items
     assert I2 in items
@@ -346,7 +346,7 @@ def test_map_intersection():
 def test_map_symmetric_difference():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = Map(Map.symmetric_difference(":memory:", m1, m2))
+    m = Map(m1.symmetric_difference(":memory:", m2))
     items = list(m.items())
     assert I1 in items
     assert I2 not in items
@@ -356,7 +356,7 @@ def test_map_symmetric_difference():
 def test_map_union():
     m1 = create_map(source=DICT12)
     m2 = create_map(source=DICT23)
-    m = Map(Map.union(":memory:", m1, m2))
+    m = Map(m1.union(":memory:", m2))
     items = list(m.items())
     assert I1 in items
     assert I2 in items
@@ -372,43 +372,50 @@ def op_test_maps():
 
 
 def test_map_union_multiple_first():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.First))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.First))
     assert m[K1] == V1
 
 
 def test_map_union_multiple_mid():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Mid))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Mid))
     assert m[K1] == V2
 
 
 def test_map_union_multiple_last():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Last))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Last))
     assert m[K1] == V3
 
 
 def test_map_union_multiple_min():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Min))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Min))
     assert m[K1] == V1
 
 
 def test_map_union_multiple_avg():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Avg))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Avg))
     assert m[K1] == (V1 + V2 + V3) // 3
 
 
 def test_map_union_multiple_max():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Max))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Max))
     assert m[K1] == V3
 
 
 def test_map_union_multiple_median_odd():
-    m = Map(Map.union(":memory:", *op_test_maps(), select=Op.Median))
+    m1, *ms = op_test_maps()
+    m = Map(m1.union(":memory:", *ms, select=Op.Median))
     assert m[K1] == V2
 
 
 def test_map_union_multiple_median_even():
     m1, m2, _ = op_test_maps()
-    m = Map(Map.union(":memory:", m1, m2, select=Op.Median))
+    m = Map(m1.union(":memory:", m2, select=Op.Median))
     assert m[K1] == (V1 + V2) // 2
 
 
