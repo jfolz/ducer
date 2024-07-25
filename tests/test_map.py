@@ -412,13 +412,13 @@ def test_map_union_multiple_median_even():
     assert m[K1] == (V1 + V2) // 2
 
 
-def test_set_eq_true():
+def test_map_eq_true():
     s1 = create_map(source=DICT12)
     s2 = create_map(source=DICT12)
     assert s1 == s2
 
 
-def test_set_eq_false():
+def test_map_eq_false():
     s1 = create_map(source=DICT12)
     s2 = create_map(source=DICT123)
     assert s1 != s2
@@ -429,6 +429,6 @@ def test_set_eq_false():
     assert s2 != s1
 
 
-def test_set_eq_false_other():
+def test_map_eq_false_other():
     s = create_map()
     assert s != 7
