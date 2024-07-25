@@ -308,9 +308,15 @@ impl Map {
         Ok(Self { inner })
     }
 
+    /// Since `Map` is stateless, returns self.
+    fn copy<'a>(slf: PyRef<'a, Self>) -> PyRef<'a, Self> {
+        slf
+    }
+
     /// Build a Map from an iterable of items `(key: bytes, value: int)`
     /// and write it to the given path.
     /// If path is `:memory:`, returns a `Buffer` containing the map data.
+    /// Path can be `str` or `pathlib.Path`.
     #[classmethod]
     pub fn build(
         _cls: &Bound<'_, PyType>,

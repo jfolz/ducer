@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Set.isdisjoint`
 - `Set.issubset`
 - `Set.issuperset`
+- `Map.copy`
 
 
 ## [0.2.1] - 2024-07-24
