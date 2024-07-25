@@ -3,5 +3,6 @@
 /scratch
 /wheelhouse
 __pycache__
+.pytest_cache
 *.so
 *.egg-info
