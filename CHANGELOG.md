@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -
 
 ### Added
-- `Map` methods: `copy`
+- `Map` methods: `copy`, `__eq__`
 - `Set` methods: `copy`, `isdisjoint`, `issubset`, `issuperset`,
                  `__eq__` , `__ge__`, `__gt__`, `__le__`, `__lt__`
 

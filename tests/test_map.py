@@ -410,3 +410,25 @@ def test_map_union_multiple_median_even():
     m1, m2, _ = op_test_maps()
     m = Map(Map.union(":memory:", m1, m2, select=Op.Median))
     assert m[K1] == (V1 + V2) // 2
+
+
+def test_set_eq_true():
+    s1 = create_map(source=DICT12)
+    s2 = create_map(source=DICT12)
+    assert s1 == s2
+
+
+def test_set_eq_false():
+    s1 = create_map(source=DICT12)
+    s2 = create_map(source=DICT123)
+    assert s1 != s2
+    assert s2 != s1
+    s1 = create_map(source=DICT12)
+    s2 = create_map(source=DICT23)
+    assert s1 != s2
+    assert s2 != s1
+
+
+def test_set_eq_false_other():
+    s = create_map()
+    assert s != 7

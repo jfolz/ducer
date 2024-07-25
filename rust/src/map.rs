@@ -360,6 +360,24 @@ impl Map {
         self.inner.len()
     }
 
+    fn __eq__(&self, other: &Map) -> bool {
+        self.inner.len() == other.inner.len() && {
+            let mut s = self.inner.stream();
+            let mut o = other.inner.stream();
+            loop {
+                match (s.next(), o.next()) {
+                    (Some(s), Some(o)) => {
+                        if s != o {
+                            return false;
+                        }
+                    }
+                    (None, None) => return true,
+                    _ => return false,
+                }
+            }
+        }
+    }
+
     #[pyo3(signature=(key, default=None))]
     fn get(&self, key: &[u8], default: Option<u64>) -> Option<u64> {
         self.inner.get(key).or_else(|| default)
