@@ -240,6 +240,18 @@ impl Set {
         self.inner.len()
     }
 
+    fn isdisjoint(&self, other: &Set) -> bool {
+        self.inner.is_disjoint(other.inner.stream())
+    }
+
+    fn issubset(&self, other: &Set) -> bool {
+        self.inner.is_subset(other.inner.stream())
+    }
+
+    fn issuperset(&self, other: &Set) -> bool {
+        self.inner.is_superset(other.inner.stream())
+    }
+
     fn keys(&self) -> KeyIterator {
         self.__iter__()
     }
