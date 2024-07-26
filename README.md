@@ -15,7 +15,7 @@ Consider the following example:
 ```Python
 n = 1_000_000_000
 items = ((b"%09d" % i, n-i) for i in range(n))
-data = ducer.Map.build(items, ":memory:")
+data = ducer.Map.build(":memory:", items)
 ```
 
 Creating this map takes about 4 minutes on my humble laptop,
@@ -50,7 +50,7 @@ Above, we already showed that you can build maps in memory by passing
 `":memory:"` as path:
 
 ```Python
-data = ducer.Map.build(items, ":memory:")
+data = ducer.Map.build(":memory:", items)
 ```
 
 If you pass any other path
@@ -58,7 +58,7 @@ If you pass any other path
 your map will be written directly to that file:
 
 ```Python
-ducer.Map.build(items, "path/to/my.map")
+ducer.Map.build("path/to/my.map", items)
 ```
 
 Building a map like this uses virtually no extra memory.
@@ -207,9 +207,9 @@ Currently, you can choose between these pre-defined operations:
 Some examples:
 
 ```Python
-m1 = ducer.Map(ducer.Map.build([(b"k1", 1), (b"k2", 1)], ":memory:"))
-m2 = ducer.Map(ducer.Map.build([(b"k2", 2), (b"k3", 2)], ":memory:"))
-m3 = ducer.Map(ducer.Map.build([(b"k3", 3)], ":memory:"))
+m1 = ducer.Map(ducer.Map.build(":memory:", [(b"k1", 1), (b"k2", 1)]))
+m2 = ducer.Map(ducer.Map.build(":memory:", [(b"k2", 2), (b"k3", 2)]))
+m3 = ducer.Map(ducer.Map.build(":memory:", [(b"k3", 3)]))
 mu = ducer.Map(m1.union(":memory:", m2, m3))
 print(dict(mu.items()))
 # {b'k1': 1, b'k2': 2, b'k3': 3}
