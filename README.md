@@ -13,6 +13,7 @@ Ducer maps and sets can be built and queried at millions of keys per second.
 Consider the following example:
 
 ```Python
+import ducer
 n = 1_000_000_000
 items = ((b"%09d" % i, n-i) for i in range(n))
 data = ducer.Map.build(":memory:", items)
