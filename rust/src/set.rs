@@ -198,7 +198,7 @@ impl Set {
     }
 
     /// Since `Set` is stateless, returns self.
-    fn copy<'a>(slf: PyRef<'a, Self>) -> PyRef<'a, Self> {
+    fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 

@@ -310,7 +310,7 @@ impl Map {
     }
 
     /// Since `Map` is stateless, returns self.
-    fn copy<'a>(slf: PyRef<'a, Self>) -> PyRef<'a, Self> {
+    fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -381,7 +381,7 @@ impl Map {
 
     #[pyo3(signature=(key, default=None))]
     fn get(&self, key: &[u8], default: Option<u64>) -> Option<u64> {
-        self.inner.get(key).or_else(|| default)
+        self.inner.get(key).or(default)
     }
 
     fn items(&self) -> ItemIterator {
