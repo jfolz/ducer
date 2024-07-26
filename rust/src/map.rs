@@ -455,7 +455,7 @@ impl Map {
 
     /// Iterate over all key-value items whose key contain the subsequence `str`.
     /// Keys don't need to contain the subsequence consecutively,
-    /// e.g., `"bd"` will match the key `"abcde"`.
+    /// e.g., `b"bd"` will match the key `b"abcde"`.
     /// Optionally apply range limits
     /// `ge` (greate than or equal),
     /// `gt` (greater than),

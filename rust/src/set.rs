@@ -341,7 +341,7 @@ impl Set {
 
     /// Iterate over all keys that contain the subsequence `str`.
     /// Keys don't need to contain the subsequence consecutively,
-    /// e.g., `"bd"` will match the key `"abcde"`.
+    /// e.g., `b"bd"` will match the key `b"abcde"`.
     /// Optionally apply range limits
     /// `ge` (greate than or equal),
     /// `gt` (greater than),
