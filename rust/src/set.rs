@@ -33,7 +33,7 @@ type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
 #[self_referencing]
 struct KeyIterator {
     set: Arc<PySet>,
-    str: String,
+    str: Vec<u8>,
     #[borrows(set, str)]
     #[not_covariant]
     stream: KeyStream<'this>,
@@ -197,7 +197,7 @@ impl Set {
         Ok(Self { inner })
     }
 
-    /// Since `Set` is stateless, returns self.
+    /// Since `Set` is immutable, returns self.
     fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -233,7 +233,7 @@ impl Set {
     fn __iter__(&self) -> KeyIterator {
         KeyIteratorBuilder {
             set: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |set, _| Box::new(set.stream()),
         }
         .build()
@@ -281,26 +281,37 @@ impl Set {
         self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
     }
 
+    /// Return True if the set has no elements in common with other.
+    /// Sets are disjoint if and only if their intersection is the empty set.
     fn isdisjoint(&self, other: &Set) -> bool {
         self.inner.is_disjoint(other.inner.stream())
     }
 
+    /// Test whether every element in the set is in other.
     fn issubset(&self, other: &Set) -> bool {
         self.inner.is_subset(other.inner.stream())
     }
 
+    /// Test whether every element in other is in the set.
     fn issuperset(&self, other: &Set) -> bool {
         self.inner.is_superset(other.inner.stream())
     }
 
+    /// Same as `iter(self)`.
     fn keys(&self) -> KeyIterator {
         self.__iter__()
     }
 
+    /// Iterate over all keys that start with `str`.
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn starts_with(
         &self,
-        str: String,
+        str: Vec<u8>,
         ge: Option<&[u8]>,
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
@@ -311,18 +322,31 @@ impl Set {
             str,
             stream_builder: |set, str| {
                 Box::new(
-                    add_range(set.search(Str::new(str).starts_with()), ge, gt, le, lt)
-                        .into_stream(),
+                    add_range(
+                        set.search(Str::from(str.as_ref()).starts_with()),
+                        ge,
+                        gt,
+                        le,
+                        lt,
+                    )
+                    .into_stream(),
                 )
             },
         }
         .build()
     }
 
+    /// Iterate over all keys that contain the subsequence `str`,
+    ///
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn subsequence(
         &self,
-        str: String,
+        str: Vec<u8>,
         ge: Option<&[u8]>,
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
@@ -332,7 +356,10 @@ impl Set {
             set: self.inner.clone(),
             str,
             stream_builder: |set, str| {
-                Box::new(add_range(set.search(Subsequence::new(str)), ge, gt, le, lt).into_stream())
+                Box::new(
+                    add_range(set.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
+                        .into_stream(),
+                )
             },
         }
         .build()
@@ -367,7 +394,7 @@ impl Set {
     ) -> KeyIterator {
         KeyIteratorBuilder {
             set: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |set, _| Box::new(add_range(set.range(), ge, gt, le, lt).into_stream()),
         }
         .build()
