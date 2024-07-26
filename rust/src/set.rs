@@ -397,7 +397,7 @@ impl Set {
     /// `gt` (greater than),
     /// `le` (less than or equal),
     /// and `lt` (less than).
-    /// If no limits are given this is equivalent to `iter(self)`
+    /// If no limits are given this is equivalent to `iter(self)`.
     #[pyo3(signature = (ge=None, gt=None, le=None, lt=None))]
     fn range(
         &self,
