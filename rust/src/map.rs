@@ -288,6 +288,10 @@ fn select_value(sf: Op, posval: &[IndexedValue]) -> u64 {
     }
 }
 
+/// An immutable map of bytes keys and non-negative integers,
+/// based on finite-state-transducers.
+/// Typically uses a fraction of the memory as the builtin `dict`
+/// and can be streamed from a file.
 #[pyclass(mapping)]
 pub struct Map {
     inner: Arc<PyMap>,
@@ -316,7 +320,7 @@ impl Map {
 
     /// Build a Map from an iterable of items `(key: bytes, value: int)`
     /// and write it to the given path.
-    /// If path is `:memory:`, returns a `Buffer` containing the map data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the map data.
     /// Path can be `str` or `pathlib.Path`.
     #[classmethod]
     pub fn build(
@@ -379,11 +383,13 @@ impl Map {
         }
     }
 
+    /// Returns the given `key` if present, `default` otherwise.
     #[pyo3(signature=(key, default=None))]
     fn get(&self, key: &[u8], default: Option<u64>) -> Option<u64> {
         self.inner.get(key).or(default)
     }
 
+    /// Iterate over all key-value items.
     fn items(&self) -> ItemIterator {
         ItemIteratorBuilder {
             map: self.inner.clone(),
@@ -393,6 +399,7 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all keys.
     fn keys(&self) -> KeyIterator {
         KeyIteratorBuilder {
             map: self.inner.clone(),
@@ -402,6 +409,7 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all values.
     fn values(&self) -> ValueIterator {
         ValueIteratorBuilder {
             map: self.inner.clone(),
@@ -411,6 +419,12 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all key-value items whose key starts with `str`.
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn starts_with(
         &self,
@@ -439,6 +453,14 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all key-value items whose key contain the subsequence `str`.
+    /// Keys don't need to contain the subsequence consecutively,
+    /// e.g., `"bd"` will match the key `"abcde"`.
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn subsequence(
         &self,
@@ -461,6 +483,12 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all key-value items whose key matches the given `Automaton`.
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (automaton, ge=None, gt=None, le=None, lt=None))]
     fn search(
         &self,
@@ -480,6 +508,12 @@ impl Map {
         .build()
     }
 
+    /// Iterate over all key-value items with optional range limits for the key
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
+    /// If no limits are given this is equivalent to `iter(self)`.
     #[pyo3(signature = (ge=None, gt=None, le=None, lt=None))]
     fn range(
         &self,
@@ -496,6 +530,13 @@ impl Map {
         .build()
     }
 
+    /// Build a new map that is the union of `self` and `others`.
+    /// `others` must be instances of `Map`.
+    /// `select` speficies how conflicts are resolved if keys are
+    /// present more than once.
+    /// If path is `":memory:"`, returns a `Buffer` containing the map data
+    /// instead of writing to path.
+    /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn union(
@@ -509,6 +550,13 @@ impl Map {
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
+    /// Build a new map that is the intersection of `self` and `others`.
+    /// `others` must be instances of `Map`.
+    /// `select` speficies how conflicts are resolved if keys are
+    /// present more than once.
+    /// If path is `":memory:"`, returns a `Buffer` containing the map data
+    /// instead of writing to path.
+    /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn intersection(
@@ -522,6 +570,15 @@ impl Map {
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
+    /// Build a new map that is the difference between `self` and all `others`,
+    /// meaning the resulting map will contain all keys that are in `self`,
+    /// but not in `others`.
+    /// `others` must be instances of `Map`.
+    /// `select` speficies how conflicts are resolved if keys are
+    /// present more than once.
+    /// If path is `":memory:"`, returns a `Buffer` containing the map data
+    /// instead of writing to path.
+    /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn difference(
@@ -535,6 +592,14 @@ impl Map {
         build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
     }
 
+    /// Build a new map that is the symmetric difference between `self` and `others`,
+    /// meaning the resulting map will contain all keys occur an odd number of times.
+    /// `others` must be instances of `Map`.
+    /// `select` speficies how conflicts are resolved if keys are
+    /// present more than once.
+    /// If path is `":memory:"`, returns a `Buffer` containing the map data
+    /// instead of writing to path.
+    /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *maps, select=Op::Last))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(

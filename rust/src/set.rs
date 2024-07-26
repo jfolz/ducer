@@ -176,7 +176,9 @@ fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
     builder
 }
 
-/// An immutable set of bytes keys, based on finite-state-transducers.
+/// An immutable set of `bytes` keys, based on finite-state-transducers.
+/// Typically uses a fraction of the memory as the builtin `set`
+/// and can be streamed from a file.
 #[pyclass(sequence)]
 pub struct Set {
     inner: Arc<PySet>,
@@ -416,7 +418,8 @@ impl Set {
 
     /// Build a new set that is the union of `self` and `others`.
     /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// instead of writing to path.
     /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
@@ -428,7 +431,8 @@ impl Set {
 
     /// Build a new set that is the intersection of `self` and `others`.
     /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// instead of writing to path.
     /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
@@ -442,7 +446,8 @@ impl Set {
     /// meaning the resulting set will contain all keys that are in `self`,
     /// but not in `others`.
     /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// instead of writing to path.
     /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
@@ -455,7 +460,8 @@ impl Set {
     /// Build a new set that is the symmetric difference between `self` and `others`,
     /// meaning the resulting set will contain all keys occur an odd number of times.
     /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// instead of writing to path.
     /// Path can be `str` or `pathlib.Path`.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
