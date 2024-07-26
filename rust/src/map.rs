@@ -251,15 +251,25 @@ fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
     builder
 }
 
+/// Conflict resolution strategies for set operations on maps.
 #[pyclass(eq, eq_int)]
 #[derive(PartialEq, Clone)]
 pub enum Op {
+    /// Select first value.
     First,
+    /// Select middle value, i.e., `values[len // 2]`.
     Mid,
+    /// Select last value.
     Last,
+    /// Select minimum.
     Min,
+    /// Select maximum.
     Max,
+    /// Select average, i.e., `sum(values) // len`.
     Avg,
+    /// Select median, i.e., with `values = sorted(values)` and `mid = len // 2`
+    /// for odd length `values[mid]`,
+    /// and `(values[mid-1] + values[mid]) // 2` for even length.
     Median,
 }
 
