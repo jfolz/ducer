@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `symmetric_difference`, `union` are no longer classmethods
 - `Map.build` and `Set.build` syntax now `build(path, interable)`
 - `Str` and `Subsequene` automata accept `bytes` instead of `str`
+- Remove superfluous `decode_int` and `encode_int` functions
 
 ### Fixed
 - Memory corruption if given buffer is not u8
