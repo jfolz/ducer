@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `symmetric_difference`, `union` are no longer classmethods
 
 ### Fixed
--
+- Potential memory corruption if PyBuffer is not u8
 
 ### Added
 - `Map` methods: `copy`, `__eq__`

@@ -21,6 +21,19 @@ impl Buffer {
     }
 }
 
+/// A read-only buffer returned by `Map.build` and `Set.build`
+/// when path is set to `":memory:"`.
+/// Use to create new `Map` or `Set` instances, or write to file.
+///
+/// ```Python
+/// from ducer import Set
+/// buf = Set.build([b"a", b"b"], ":memory:")
+/// s = Set(buf)
+/// for k in s:
+///     print(k)
+/// with open("my.set", "wb") as f:
+///     f.write(buf)
+/// ```
 #[pymethods]
 impl Buffer {
     #[allow(clippy::cast_possible_wrap)]
@@ -95,6 +108,7 @@ impl Buffer {
     }
 }
 
+/// Holds a `PyBuffer<T>` and creates a `&[T]` slice from it.
 pub struct PyBufferRef<T: Element> {
     view: PyBuffer<T>,
 }
@@ -116,7 +130,21 @@ impl<T: Element> PyBufferRef<T> {
 impl<T: Element> AsRef<[T]> for PyBufferRef<T> {
     fn as_ref(&self) -> &[T] {
         unsafe {
-            std::slice::from_raw_parts(self.view.buf_ptr() as *const T, self.view.len_bytes())
+            let ptr = self.view.buf_ptr() as *const T;
+
+            // Check if the pointer is properly aligned
+            assert!(
+                (ptr as usize) % std::mem::align_of::<T>() == 0,
+                "PyBuffer pointer is not properly aligned"
+            );
+
+            // Safety:
+            // We have to assume that the `PyBuffer` is implemented correctly, so
+            // - `ptr` is a valid pointer
+            // - we just checked that it's aligned properly for `T`
+            // - we already checked in `new` that it's contiguous
+            // - `item_count()` correctly returns the number of items
+            std::slice::from_raw_parts(ptr, self.view.item_count())
         }
     }
 }
