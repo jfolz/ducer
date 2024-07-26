@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import SupportsInt, Tuple, SupportsBytes, Iterable, Iterator
 from pathlib import Path
 
