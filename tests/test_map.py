@@ -1,27 +1,25 @@
-import mmap
-import pytest
 import contextlib
+import mmap
+from pathlib import Path
+
+import pytest
 
 from ducer import Automaton, Map, Op
 
 
-S1 = "key1"
-K1 = S1.encode('utf-8')
+K1 = b"key1"
 V1 = 123
 I1 = K1, V1
 
-S2 = "key2"
-K2 = S2.encode('utf-8')
+K2 = b"key2"
 V2 = 456
 I2 = K2, V2
 
-S3 = "key3"
-K3 = S3.encode('utf-8')
+K3 = b"key3"
 V3 = 789
 I3 = K3, V3
 
-SO = "other"
-KO = SO.encode('utf-8')
+KO = b"other"
 VO = 123456789
 IO = KO, VO
 
@@ -31,7 +29,7 @@ DICT23 = dict((I2, I3))
 DICT12O = dict((I1, I2, IO))
 
 
-def build_map(source=DICT12, path=":memory:"):
+def build_map(source=DICT12, path: str | Path = ":memory:"):
     return Map.build(source.items(), path)
 
 
@@ -39,16 +37,34 @@ def create_map(source=DICT12):
     return Map(build_map(source=source))
 
 
+def validate_map(s, source=DICT12):
+    for k in source:
+        assert k in s
+    for k in s:
+        assert k in source
+
+
+def validate_map_file(path, source=DICT12):
+    with open(path, "rb") as f:
+        data = f.read()
+    s = Map(data)
+    validate_map(s, source=source)
+
+
 def test_map_build_memory():
-    build_map()
+    validate_map(create_map())
 
 
-def test_map_build_file(tmp_path):
-    build_map(path=tmp_path / "test.map")
+def test_map_build_str(tmp_path):
+    path = str(tmp_path / "test.map")
+    build_map(path=path)
+    validate_map_file(path)
 
 
-def test_map_init_memory():
-    create_map()
+def test_map_build_path(tmp_path):
+    path = Path(tmp_path / "test.map")
+    build_map(path=path)
+    validate_map_file(path)
 
 
 def test_map_build_not_bytes():
@@ -71,12 +87,12 @@ def test_map_build_too_large():
         Map.build([(b"key", 2**64)], ":memory:")
 
 
-def test_map_init_read(tmp_path):
+def test_map_build_buffer_file(tmp_path):
     path = tmp_path / "test.map"
     build_map(path=path)
     with open(path, "rb") as f:
         data = f.read()
-    Map(data)
+    validate_map(Map(data))
 
 
 @contextlib.contextmanager
@@ -253,7 +269,7 @@ def test_map_search_never_complement():
 
 def test_map_search_str():
     m = create_map()
-    a = Automaton.str("key1")
+    a = Automaton.str(K1)
     items = list(m.search(a))
     assert I1 in items
     assert I2 not in items
@@ -261,7 +277,7 @@ def test_map_search_str():
 
 def test_map_search_str_complement():
     m = create_map()
-    a = Automaton.str("key1").complement()
+    a = Automaton.str(K1).complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 in items
@@ -269,7 +285,7 @@ def test_map_search_str_complement():
 
 def test_map_search_subsequence():
     m = create_map()
-    a = Automaton.subsequence("k1")
+    a = Automaton.subsequence(b"k1")
     items = list(m.search(a))
     assert I1 in items
     assert I2 not in items
@@ -277,7 +293,7 @@ def test_map_search_subsequence():
 
 def test_map_search_subsequence_complement():
     m = create_map()
-    a = Automaton.subsequence("k1").complement()
+    a = Automaton.subsequence(b"k1").complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 in items
@@ -285,7 +301,7 @@ def test_map_search_subsequence_complement():
 
 def test_map_search_starts_with():
     m = create_map(source=DICT12O)
-    a = Automaton.str("key").starts_with()
+    a = Automaton.str(b"key").starts_with()
     items = list(m.search(a))
     assert I1 in items
     assert I2 in items
@@ -294,7 +310,7 @@ def test_map_search_starts_with():
 
 def test_map_search_starts_with_complement():
     m = create_map(source=DICT12O)
-    a = Automaton.str("key").starts_with().complement()
+    a = Automaton.str(b"key").starts_with().complement()
     items = list(m.search(a))
     assert I1 not in items
     assert I2 not in items
@@ -303,8 +319,8 @@ def test_map_search_starts_with_complement():
 
 def test_map_search_union():
     m = create_map(source=DICT12O)
-    a1 = Automaton.str("key1")
-    a2 = Automaton.str("oth").starts_with()
+    a1 = Automaton.str(K1)
+    a2 = Automaton.str(b"oth").starts_with()
     a = a1.union(a2)
     items = list(m.search(a))
     assert I1 in items
@@ -314,8 +330,8 @@ def test_map_search_union():
 
 def test_map_search_intersection():
     m = create_map(source=DICT123)
-    a1 = Automaton.str("key1").complement()
-    a2 = Automaton.str("key3").complement()
+    a1 = Automaton.str(K1).complement()
+    a2 = Automaton.str(K3).complement()
     a = a1.intersection(a2)
     items = list(m.search(a))
     assert I1 not in items

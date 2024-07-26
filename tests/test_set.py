@@ -1,19 +1,15 @@
-import mmap
-import pytest
 import contextlib
+import mmap
+from pathlib import Path
+
+import pytest
 
 from ducer import Automaton, Op, Set
 
 
-S1 = "key1"
-K1 = S1.encode('utf-8')
-
-S2 = "key2"
-K2 = S2.encode('utf-8')
-
-S3 = "key3"
-K3 = S3.encode('utf-8')
-
+K1 = b"key1"
+K2 = b"key2"
+K3 = b"key3"
 SO = "other"
 KO = SO.encode('utf-8')
 
@@ -26,7 +22,7 @@ SET3 = K3,
 SET12O = K1, K2, KO
 
 
-def build_set(source=SET12, path=":memory:"):
+def build_set(source=SET12, path: str | Path = ":memory:"):
     return Set.build(source, path)
 
 
@@ -34,16 +30,34 @@ def create_set(source=SET12):
     return Set(build_set(source=source))
 
 
+def validate_set(s, source=SET12):
+    for k in source:
+        assert k in s
+    for k in s:
+        assert k in source
+
+
+def validate_set_file(path, source=SET12):
+    with open(path, "rb") as f:
+        data = f.read()
+    s = Set(data)
+    validate_set(s, source=source)
+
+
 def test_set_build_memory():
-    build_set()
+    validate_set(Set(build_set()))
 
 
-def test_set_build_file(tmp_path):
-    build_set(path=tmp_path / "test.set")
+def test_set_build_str(tmp_path):
+    path = str(tmp_path / "test.set")
+    build_set(path=path)
+    validate_set_file(path)
 
 
-def test_set_init_memory():
-    create_set()
+def test_set_build_path(tmp_path):
+    path = Path(tmp_path / "test.set")
+    build_set(path=path)
+    validate_set_file(path)
 
 
 def test_set_build_not_bytes():
@@ -51,12 +65,14 @@ def test_set_build_not_bytes():
         Set.build(["key"], ":memory:")
 
 
-def test_set_init_read(tmp_path):
+def test_set_build_buffer_file(tmp_path):
     path = tmp_path / "test.set"
-    build_set(path=path)
-    with open(path, "rb") as f:
+    buf = build_set()
+    with open(path, 'wb') as f:
+        f.write(buf)
+    with open(path, 'rb') as f:
         data = f.read()
-    Set(data)
+    validate_set(Set(data))
 
 
 @contextlib.contextmanager
@@ -293,7 +309,7 @@ def test_set_search_never_complement():
 
 def test_set_search_str():
     m = create_set()
-    a = Automaton.str("key1")
+    a = Automaton.str(K1)
     items = list(m.search(a))
     assert K1 in items
     assert K2 not in items
@@ -301,7 +317,7 @@ def test_set_search_str():
 
 def test_set_search_str_complement():
     m = create_set()
-    a = Automaton.str("key1").complement()
+    a = Automaton.str(K1).complement()
     items = list(m.search(a))
     assert K1 not in items
     assert K2 in items
@@ -309,7 +325,7 @@ def test_set_search_str_complement():
 
 def test_set_search_subsequence():
     m = create_set()
-    a = Automaton.subsequence("k1")
+    a = Automaton.subsequence(b"k1")
     items = list(m.search(a))
     assert K1 in items
     assert K2 not in items
@@ -317,7 +333,7 @@ def test_set_search_subsequence():
 
 def test_set_search_subsequence_complement():
     m = create_set()
-    a = Automaton.subsequence("k1").complement()
+    a = Automaton.subsequence(b"k1").complement()
     items = list(m.search(a))
     assert K1 not in items
     assert K2 in items
@@ -325,7 +341,7 @@ def test_set_search_subsequence_complement():
 
 def test_set_search_starts_with():
     m = create_set(source=SET12O)
-    a = Automaton.str("key").starts_with()
+    a = Automaton.str(b"key").starts_with()
     items = list(m.search(a))
     assert K1 in items
     assert K2 in items
@@ -334,7 +350,7 @@ def test_set_search_starts_with():
 
 def test_set_search_starts_with_complement():
     m = create_set(source=SET12O)
-    a = Automaton.str("key").starts_with().complement()
+    a = Automaton.str(b"key").starts_with().complement()
     items = list(m.search(a))
     assert K1 not in items
     assert K2 not in items
@@ -343,8 +359,8 @@ def test_set_search_starts_with_complement():
 
 def test_set_search_union():
     m = create_set(source=SET12O)
-    a1 = Automaton.str("key1")
-    a2 = Automaton.str("oth").starts_with()
+    a1 = Automaton.str(K1)
+    a2 = Automaton.str(b"oth").starts_with()
     a = a1.union(a2)
     items = list(m.search(a))
     assert K1 in items
@@ -354,8 +370,8 @@ def test_set_search_union():
 
 def test_set_search_intersection():
     m = create_set(source=SET123)
-    a1 = Automaton.str("key1").complement()
-    a2 = Automaton.str("key3").complement()
+    a1 = Automaton.str(K1).complement()
+    a2 = Automaton.str(K3).complement()
     a = a1.intersection(a2)
     items = list(m.search(a))
     assert K1 not in items

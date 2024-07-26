@@ -13,6 +13,9 @@ pyo3 = { version = "0.22.1", features = ["extension-module"] }
 fst = "0.4.7"
 ouroboros = "0.18.4"
 
+[patch.crates-io]
+fst = { git = "https://github.com/jfolz/fst.git" }
+
 [profile.prod]
 inherits = "release"
 strip = true         # Automatically strip symbols from the binary.

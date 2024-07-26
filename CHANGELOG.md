@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Compatibility with builtins: `difference`, `intersection`,
   `symmetric_difference`, `union` are no longer classmethods
+- `Str` and `Subsequene` automata accept `bytes` instead of `str`
 
 ### Fixed
 - Potential memory corruption if PyBuffer is not u8

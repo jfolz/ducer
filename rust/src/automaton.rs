@@ -442,16 +442,16 @@ impl AutomatonGraph {
     }
 
     #[classmethod]
-    fn str(_cls: &Bound<'_, PyType>, str: &str) -> Self {
+    fn str(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {
-            root: Arc::new(Node::Str(str.as_bytes().to_owned())),
+            root: Arc::new(Node::Str(str.to_owned())),
         }
     }
 
     #[classmethod]
-    fn subsequence(_cls: &Bound<'_, PyType>, str: &str) -> Self {
+    fn subsequence(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {
-            root: Arc::new(Node::Subsequence(str.as_bytes().to_owned())),
+            root: Arc::new(Node::Subsequence(str.to_owned())),
         }
     }
 

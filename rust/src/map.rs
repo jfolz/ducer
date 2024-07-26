@@ -32,7 +32,7 @@ type ValueStream<'f> = Box<dyn for<'a> Streamer<'a, Item = u64> + Send + 'f>;
 #[self_referencing]
 struct ItemIterator {
     map: Arc<PyMap>,
-    str: String,
+    str: Vec<u8>,
     #[borrows(map, str)]
     #[not_covariant]
     stream: ItemStream<'this>,
@@ -54,7 +54,7 @@ impl ItemIterator {
 #[self_referencing]
 struct KeyIterator {
     map: Arc<PyMap>,
-    str: String,
+    str: Vec<u8>,
     #[borrows(map, str)]
     #[not_covariant]
     stream: KeyStream<'this>,
@@ -76,7 +76,7 @@ impl KeyIterator {
 #[self_referencing]
 struct ValueIterator {
     map: Arc<PyMap>,
-    str: String,
+    str: Vec<u8>,
     #[borrows(map, str)]
     #[not_covariant]
     stream: ValueStream<'this>,
@@ -387,7 +387,7 @@ impl Map {
     fn items(&self) -> ItemIterator {
         ItemIteratorBuilder {
             map: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |map, _| Box::new(map.stream()),
         }
         .build()
@@ -396,7 +396,7 @@ impl Map {
     fn keys(&self) -> KeyIterator {
         KeyIteratorBuilder {
             map: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |map, _| Box::new(map.keys()),
         }
         .build()
@@ -405,7 +405,7 @@ impl Map {
     fn values(&self) -> ValueIterator {
         ValueIteratorBuilder {
             map: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |map, _| Box::new(map.values()),
         }
         .build()
@@ -414,7 +414,7 @@ impl Map {
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn starts_with(
         &self,
-        str: String,
+        str: Vec<u8>,
         ge: Option<&[u8]>,
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
@@ -425,8 +425,14 @@ impl Map {
             str,
             stream_builder: |map, str| {
                 Box::new(
-                    add_range(map.search(Str::new(str).starts_with()), ge, gt, le, lt)
-                        .into_stream(),
+                    add_range(
+                        map.search(Str::from(str.as_ref()).starts_with()),
+                        ge,
+                        gt,
+                        le,
+                        lt,
+                    )
+                    .into_stream(),
                 )
             },
         }
@@ -436,7 +442,7 @@ impl Map {
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn subsequence(
         &self,
-        str: String,
+        str: Vec<u8>,
         ge: Option<&[u8]>,
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
@@ -446,7 +452,10 @@ impl Map {
             map: self.inner.clone(),
             str,
             stream_builder: |map, str| {
-                Box::new(add_range(map.search(Subsequence::new(str)), ge, gt, le, lt).into_stream())
+                Box::new(
+                    add_range(map.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
+                        .into_stream(),
+                )
             },
         }
         .build()
@@ -481,7 +490,7 @@ impl Map {
     ) -> ItemIterator {
         ItemIteratorBuilder {
             map: self.inner.clone(),
-            str: String::new(),
+            str: Vec::new(),
             stream_builder: |map, _| Box::new(add_range(map.range(), ge, gt, le, lt).into_stream()),
         }
         .build()

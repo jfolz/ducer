@@ -239,16 +239,16 @@ You can also iterate over all keys that start with a certain prefix,
 with optional limits same as `range`:
 
 ```Python
-m.starts_with("key", ge=b"key17", lt=b"key42")
-m.starts_with("key", gt=b"key17", le=b"key42")
+m.starts_with(b"key", ge=b"key17", lt=b"key42")
+m.starts_with(b"key", gt=b"key17", le=b"key42")
 ```
 
 You can also search for subsequences, e.g., all keys matching `*k*7*`,
 again with optional limits:
 
 ```Python
-m.subsequence("k7", ge=b"key17", lt=b"key42")
-m.subsequence("k7", gt=b"key17", le=b"key42")
+m.subsequence(b"k7", ge=b"key17", lt=b"key42")
+m.subsequence(b"k7", gt=b"key17", le=b"key42")
 ```
 
 Finally, you can create an `Automaton` to create your own search patterns.
@@ -267,22 +267,22 @@ For example, to recreate `Map.starts_with`, you can use the following
 automata with the `Map.search` method:
 
 ```Python
-a = ducer.Automaton.str("key").starts_with()
+a = ducer.Automaton.str(b"key").starts_with()
 m.search(a)
 ```
 
 Add `complement` to search for keys that do not start with the string:
 
 ```Python
-a = ducer.Automaton.str("key").starts_with().complement()
+a = ducer.Automaton.str(b"key").starts_with().complement()
 m.search(a)
 ```
 
 Finally, you can combine multiple automata, e.g. with `union`:
 
 ```Python
-a1 = ducer.Automaton.str("key").starts_with()
-a2 = ducer.Automaton.str("other").starts_with()
+a1 = ducer.Automaton.str(b"key").starts_with()
+a2 = ducer.Automaton.str(b"other").starts_with()
 a = a1.union(a2)
 m.search(a)
 ```
