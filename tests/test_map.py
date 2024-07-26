@@ -30,7 +30,7 @@ DICT12O = dict((I1, I2, IO))
 
 
 def build_map(source=DICT12, path: str | Path = ":memory:"):
-    return Map.build(source.items(), path)
+    return Map.build(path, source.items())
 
 
 def create_map(source=DICT12):
@@ -69,22 +69,22 @@ def test_map_build_path(tmp_path):
 
 def test_map_build_not_bytes():
     with pytest.raises(TypeError):
-        Map.build([("key", 0)], ":memory:")
+        Map.build(":memory:", [("key", 0)])
 
 
 def test_map_build_not_int():
     with pytest.raises(TypeError):
-        Map.build([(b"key", 0.5)], ":memory:")
+        Map.build(":memory:", [(b"key", 0.5)])
 
 
 def test_map_build_negative():
     with pytest.raises(OverflowError):
-        Map.build([(b"key", -1)], ":memory:")
+        Map.build(":memory:", [(b"key", -1)])
 
 
 def test_map_build_too_large():
     with pytest.raises(OverflowError):
-        Map.build([(b"key", 2**64)], ":memory:")
+        Map.build(":memory:", [(b"key", 2**64)])
 
 
 def test_map_build_buffer_file(tmp_path):
@@ -381,9 +381,9 @@ def test_map_union():
 
 def op_test_maps():
     return (
-        Map(Map.build({K1: V1}.items(), ":memory:")),
-        Map(Map.build({K1: V2}.items(), ":memory:")),
-        Map(Map.build({K1: V3}.items(), ":memory:")),
+        Map(Map.build(":memory:", {K1: V1}.items())),
+        Map(Map.build(":memory:", {K1: V2}.items())),
+        Map(Map.build(":memory:", {K1: V3}.items())),
     )
 
 

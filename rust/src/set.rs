@@ -209,8 +209,8 @@ impl Set {
     #[classmethod]
     pub fn build(
         _cls: &Bound<'_, PyType>,
-        iterable: &Bound<'_, PyAny>,
         path: PathBuf,
+        iterable: &Bound<'_, PyAny>,
     ) -> PyResult<Option<Buffer>> {
         if path == Path::new(":memory:") {
             let buf = Vec::with_capacity(10 * (1 << 10));

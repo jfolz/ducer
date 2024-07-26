@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Compatibility with builtins: `difference`, `intersection`,
   `symmetric_difference`, `union` are no longer classmethods
+- `Map.build` and `Set.build` syntax now `build(path, interable)`
 - `Str` and `Subsequene` automata accept `bytes` instead of `str`
 
 ### Fixed
-- Potential memory corruption if PyBuffer is not u8
+- Memory corruption if given buffer is not u8
 
 ### Added
 - `Map` methods: `copy`, `__eq__`

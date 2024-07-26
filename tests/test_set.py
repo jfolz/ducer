@@ -23,7 +23,7 @@ SET12O = K1, K2, KO
 
 
 def build_set(source=SET12, path: str | Path = ":memory:"):
-    return Set.build(source, path)
+    return Set.build(path, source)
 
 
 def create_set(source=SET12):
@@ -62,7 +62,7 @@ def test_set_build_path(tmp_path):
 
 def test_set_build_not_bytes():
     with pytest.raises(TypeError):
-        Set.build(["key"], ":memory:")
+        Set.build(":memory:", ["key"])
 
 
 def test_set_build_buffer_file(tmp_path):
