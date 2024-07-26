@@ -176,6 +176,7 @@ fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
     builder
 }
 
+/// An immutable set of bytes keys, based on finite-state-transducers.
 #[pyclass(sequence)]
 pub struct Set {
     inner: Arc<PySet>,
@@ -204,7 +205,7 @@ impl Set {
 
     /// Build a Set from an iterable of `bytes`
     /// and write it to the given path.
-    /// If path is `:memory:`, returns a `Buffer` containing the set data.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
     /// Path can be `str` or `pathlib.Path`.
     #[classmethod]
     pub fn build(
@@ -336,8 +337,9 @@ impl Set {
         .build()
     }
 
-    /// Iterate over all keys that contain the subsequence `str`,
-    ///
+    /// Iterate over all keys that contain the subsequence `str`.
+    /// Keys don't need to contain the subsequence consecutively,
+    /// e.g., `"bd"` will match the key `"abcde"`.
     /// Optionally apply range limits
     /// `ge` (greate than or equal),
     /// `gt` (greater than),
@@ -365,6 +367,12 @@ impl Set {
         .build()
     }
 
+    /// Iterate over all keys that match the given `Automaton`.
+    /// Optionally apply range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
     #[pyo3(signature = (automaton, ge=None, gt=None, le=None, lt=None))]
     fn search(
         &self,
@@ -384,6 +392,12 @@ impl Set {
         .build()
     }
 
+    /// Iterate over all keys with optional range limits
+    /// `ge` (greate than or equal),
+    /// `gt` (greater than),
+    /// `le` (less than or equal),
+    /// and `lt` (less than).
+    /// If no limits are given this is equivalent to `iter(self)`
     #[pyo3(signature = (ge=None, gt=None, le=None, lt=None))]
     fn range(
         &self,
@@ -400,38 +414,57 @@ impl Set {
         .build()
     }
 
-    #[pyo3(signature = (path, *sets))]
+    /// Build a new set that is the union of `self` and `others`.
+    /// `others` must be instances of `Set`.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// Path can be `str` or `pathlib.Path`.
+    #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
-    fn union(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, sets)?;
+    fn union(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, others)?;
         let stream = opbuilder(&sets).union();
         build_from_stream(&path, stream)
     }
 
-    #[pyo3(signature = (path, *sets))]
+    /// Build a new set that is the intersection of `self` and `others`.
+    /// `others` must be instances of `Set`.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// Path can be `str` or `pathlib.Path`.
+    #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
-    fn intersection(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, sets)?;
+    fn intersection(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, others)?;
         let stream = opbuilder(&sets).intersection();
         build_from_stream(&path, stream)
     }
 
-    #[pyo3(signature = (path, *sets))]
+    /// Build a new set that is the difference between `self` and all `others`,
+    /// meaning the resulting set will contain all keys that are in `self`,
+    /// but not in `others`.
+    /// `others` must be instances of `Set`.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// Path can be `str` or `pathlib.Path`.
+    #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
-    fn difference(&self, path: PathBuf, sets: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, sets)?;
+    fn difference(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
+        let sets = setvec(self, others)?;
         let stream = opbuilder(&sets).difference();
         build_from_stream(&path, stream)
     }
 
-    #[pyo3(signature = (path, *sets))]
+    /// Build a new set that is the symmetric difference between `self` and `others`,
+    /// meaning the resulting set will contain all keys occur an odd number of times.
+    /// `others` must be instances of `Set`.
+    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
+    /// Path can be `str` or `pathlib.Path`.
+    #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
         &self,
         path: PathBuf,
-        sets: &Bound<'_, PyTuple>,
+        others: &Bound<'_, PyTuple>,
     ) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, sets)?;
+        let sets = setvec(self, others)?;
         let stream = opbuilder(&sets).symmetric_difference();
         build_from_stream(&path, stream)
     }
