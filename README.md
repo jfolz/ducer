@@ -137,7 +137,7 @@ This may change in a future version if there is demand for it.
 
 #### Not implemented
 
-Since `Map` is immutable, the following are **are not implemented**:
+Since `Map` is immutable, the following are **not implemented**:
 - `clear`
 - `fromkeys`
 - `pop`
@@ -145,7 +145,7 @@ Since `Map` is immutable, the following are **are not implemented**:
 - `setdefault`
 - `update`
 
-Since `Set` is immutable, the following are **are not implemented**:
+Since `Set` is immutable, the following are **not implemented**:
 - `add`
 - `clear`
 - `difference_update`, `-=`
