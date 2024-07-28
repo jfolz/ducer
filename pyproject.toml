@@ -42,6 +42,9 @@ Repository = "https://github.com/jfolz/ducer"
 Issues = "https://github.com/jfolz/ducer/issues"
 Changelog = "https://github.com/jfolz/ducer/blob/main/CHANGELOG.md"
 
+[project.optional-dependencies]
+docs = ["sphinx", "myst-parser", "furo"]
+
 [tool.setuptools_scm]
 
 [tool.setuptools]

@@ -1,0 +1,37 @@
+/*
+Increase spacing between reference items
+*/
+dl {
+    margin: 2em 0;
+}
+
+/*
+Make parameters section title bold instead of capitalized
+*/
+.field-list > dt {
+    font-size: inherit !important;
+    text-transform: none !important;
+    font-weight: bold !important;
+}
+
+/*
+Add background and border
+*/
+.sig-object {
+    border-radius: 5.8pt !important;
+    margin-top: 1em !important;
+}
+
+/*
+Reset text color of rendered notebook tables
+*/
+div.rendered_html table {
+    color: inherit !important;
+}
+
+/*
+Set background of odd rows in rendered notebook tables
+*/
+div.rendered_html tbody tr:nth-child(2n + 1) {
+    background: #b0b0b010 !important;
+}
