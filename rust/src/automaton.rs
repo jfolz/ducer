@@ -465,7 +465,7 @@ impl AutomatonGraph {
     }
 
     /// Create a new `Automaton` that subsequences matches `str`.
-    /// E.g., `"bd"` matches the key `"abcde"`.
+    /// E.g., `b"bd"` matches the key `b"abcde"`.
     #[classmethod]
     fn subsequence(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {

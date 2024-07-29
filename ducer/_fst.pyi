@@ -24,25 +24,74 @@ class Op:
 
 @final
 class Automaton:
-    @classmethod
-    def always(cls) -> Automaton: ...
+    """
+    Automata can be used to efficiently apply complex search patterns
+    to the keys of maps and sets.
+    Use one of the classmethods `never`, `always`, `str`,
+    or `subsequence` to create a new automaton.
+    Add more complex behvaior on top with `starts_with`, `complement`,
+    `intersection`, or `union`.
+    E.g., an automaton that mathes keys that start with `b"foo"` or `b"bar"`:
+
+    ```Python
+    a_foo = Automaton.str(b"foo")
+    a_bar = Automaton.str(b"bar")
+    a_foobar = a_foo.union(a_bar).starts_with()
+    ```
+    """
 
     @classmethod
-    def never(cls) -> Automaton: ...
+    def always(cls) -> Automaton:
+        """
+        Create a new `Automaton` that always matches.
+        """
+        ...
 
     @classmethod
-    def str(cls, str: bytes) -> Automaton: ...
+    def never(cls) -> Automaton:
+        """
+        Create a new `Automaton` that never matches.
+        """
+        ...
 
     @classmethod
-    def subsequence(cls, str: bytes) -> Automaton: ...
+    def str(cls, str: bytes) -> Automaton:
+        """
+        Create a new `Automaton` that matches `str` exactly.
+        """
+        ...
 
-    def complement(self) -> Automaton: ...
+    @classmethod
+    def subsequence(cls, str: bytes) -> Automaton:
+        """
+        Create a new `Automaton` that subsequences matches str.
+        E.g., b"bd" matches the key b"abcde".
+        """
+        ...
 
-    def starts_with(self) -> Automaton: ...
+    def complement(self) -> Automaton:
+        """
 
-    def intersection(self, other: Automaton) -> Automaton: ...
+        """
+        ...
 
-    def union(self, other: Automaton) -> Automaton: ...
+    def starts_with(self) -> Automaton:
+        """
+
+        """
+        ...
+
+    def intersection(self, other: Automaton) -> Automaton:
+        """
+
+        """
+        ...
+
+    def union(self, other: Automaton) -> Automaton:
+        """
+
+        """
+        ...
 
 
 @final
