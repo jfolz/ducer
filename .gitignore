@@ -2,7 +2,9 @@
 /rust/target
 /scratch
 /wheelhouse
+/doc/build
 __pycache__
+.mypy_cache
 .pytest_cache
 *.so
 *.egg-info
