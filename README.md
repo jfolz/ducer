@@ -43,9 +43,7 @@ so there are some limitations you should consider before proceeding:
 
 
 
-## Usage
-
-### Building
+## Building
 
 Above, we already showed that you can build maps in memory by passing
 `":memory:"` as path:
@@ -65,7 +63,8 @@ ducer.Map.build("path/to/my.map", items)
 Building a map like this uses virtually no extra memory.
 
 
-### Opening
+
+## Opening
 
 One key advantage of ducer maps is streamability.
 Unlike the builtin `dict`, a `Map` does not have to reside entirely in memory.
@@ -88,7 +87,8 @@ m = ducer.Map(data)
 ```
 
 
-### Access
+
+## Access
 
 To the extent that it's feasible, `Map` and `Set` are intended to be
 direct replacements for the builtin Python `dict` and `set`.
@@ -133,9 +133,10 @@ for other `Set` objects, not the builtin `set`.
 This may change in a future version if there is demand for it.
 
 
-### Differences to builtins
 
-#### Not implemented
+## Differences to builtins
+
+### Not implemented
 
 Since `Map` is immutable, the following are **not implemented**:
 - `clear`
@@ -143,7 +144,7 @@ Since `Map` is immutable, the following are **not implemented**:
 - `pop`
 - `popitem`
 - `setdefault`
-- `update`
+- `update`, `|=`
 
 Since `Set` is immutable, the following are **not implemented**:
 - `add`
@@ -158,9 +159,11 @@ Since `Set` is immutable, the following are **not implemented**:
 
 Further, the `|`, `&`, `-`, `^` operators are also not implemented,
 since it is not possible to specify the storage path.
+Use the respective `union`, `intersection`, `difference`,
+and `symmetric_difference` methods instead.
 
 
-#### Incompatible syntax
+### Incompatible syntax
 
 `difference`, `intersection`, `symmetric_difference`, and `union`
 have slightly different syntax to accomodate the necessary path.
@@ -177,7 +180,7 @@ Like the standard library, difference will create the set of
 all elements of `s` that are not present in `others`.
 
 
-#### Set operations on maps
+### Set operations on maps
 
 Unlike the builtin `dict`, the ducer `Map` offers set operations.
 The syntax is the same as for sets:
@@ -197,13 +200,13 @@ By default the last values in the list is used to mimic the behavior
 of `dict.update`.
 Currently, you can choose between these pre-defined operations:
 
-- `ducer.Op.First`
+- `ducer.Op.First` -- first element
 - `ducer.Op.Mid` -- middle element, left if even number of values
 - `ducer.Op.Last` -- the default
-- `ducer.Op.Min`
+- `ducer.Op.Min` -- minimum value
 - `ducer.Op.Avg` -- average value cast to `int`
 - `ducer.Op.Median` -- median value cast to `int`
-- `ducer.Op.Max`
+- `ducer.Op.Max` -- maximum value
 
 Some examples:
 
@@ -220,7 +223,8 @@ print(dict(mu.items()))
 ```
 
 
-### Advanced search patterns
+
+## Advanced search patterns
 
 The underlying FSTs allow for some advanced search patterns that would
 otherwise be costly to implement on top of `dict` and `set`.

@@ -101,6 +101,19 @@ API reference
         for k, v in m.items():
             pass
 
+    Since maps are immutable, the following are not implemented:
+
+    * ``clear``
+    * ``fromkeys``
+    * ``pop``
+    * ``popitem``
+    * ``setdefault``
+    * ``update``, ``|=``
+
+    Further, the ``|``, ``&``, ``-``, ``^`` operators are also not implemented,
+    since it is not possible to specify the storage path.
+    Use :meth:`Map.union`, :meth:`Map.intersection`, :meth:`Map.difference`, and :meth:`Map.symmetric_difference` instead.
+
     .. classmethod:: build(cls, path: str | ~pathlib.Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None
 
         Build a map from an iterable of items ``(key: bytes, value: int)`` and write it to the given path.
@@ -171,7 +184,7 @@ API reference
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: difference(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+    .. method:: difference(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
 
         Build a new map that is the difference between ``self`` and all ``others``,
         meaning the resulting map will contain all keys that are in ``self``, but not in ``others``.
@@ -180,7 +193,7 @@ API reference
         If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         Path can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
 
         Build a new map that is the intersection of ``self`` and ``others``.
         ``others`` must be instances of :class:`Map`.
@@ -188,7 +201,7 @@ API reference
         If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         :class:`~pathlib.Path` can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
 
         Build a new map that is the symmetric difference between ``self`` and ``others``.
         The resulting map will contain all keys that appear an odd number of times, i.e.,
@@ -198,7 +211,7 @@ API reference
         If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: union(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+    .. method:: union(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
 
         Build a new map that is the union of ``self`` and ``others``.
         ``others`` must be instances of :class:`Map`.
@@ -270,6 +283,22 @@ API reference
         s.issuperset(o)
         s >= o  # superset
         s > o  # proper superset
+
+    Since sets are immutable, the following are **not implemented**:
+
+    * ``add``
+    * ``clear``
+    * ``difference_update``, ``-=``
+    * ``discard``
+    * ``intersection_update``, ``&=``
+    * ``pop``
+    * ``remove``
+    * ``symmetric_difference_update``, ``^=``
+    * ``update``, ``|=``
+
+    Further, the ``|``, ``&``, ``-``, ``^`` operators are also not implemented,
+    since it is not possible to specify the storage path.
+    Use :meth:`Set.union`, :meth:`Set.intersection`, :meth:`Set.difference`, and :meth:`Set.symmetric_difference` instead.
 
     .. classmethod:: build(cls, iterable: Iterable[SupportsBytes], path: str | ~pathlib.Path) -> Buffer | None
 

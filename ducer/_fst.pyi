@@ -282,7 +282,7 @@ class Map:
         """
         ...
 
-    def difference(self, path: str | Path, *others: Map, select=Op.Last) -> Buffer | None:
+    def difference(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
         """
         Build a new map that is the difference between `self` and all `others`,
         meaning the resulting map will contain all keys that are in `self`,
@@ -296,7 +296,7 @@ class Map:
         """
         ...
 
-    def intersection(self, path: str | Path, *others: Map, select=Op.Last) -> Buffer | None:
+    def intersection(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
         """
         Build a new map that is the intersection of `self` and `others`.
         `others` must be instances of `Map`.
@@ -308,7 +308,7 @@ class Map:
         """
         ...
 
-    def symmetric_difference(self, path: str | Path, *others: Map, select=Op.Last) -> Buffer | None:
+    def symmetric_difference(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
         """
         Build a new map that is the symmetric difference between `self` and `others`.
         The resulting map will contain all keys that appear an odd number of times, i.e.,
@@ -323,7 +323,7 @@ class Map:
         """
         ...
 
-    def union(self, path: str | Path, *others: Map, select=Op.Last) -> Buffer | None:
+    def union(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
         """
         Build a new map that is the union of `self` and `others`.
         `others` must be instances of `Map`.
