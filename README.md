@@ -122,10 +122,10 @@ for k in s:
 s.isdisjoint(o)
 s.issubset(o)
 s <= o  # subset
-s < o  # true subset
+s < o  # proper subset
 s.issuperset(o)
 s >= o  # superset
-s > o  # true superset
+s > o  # proper superset
 ```
 
 **Note:** Comparison operations are currently only implemented

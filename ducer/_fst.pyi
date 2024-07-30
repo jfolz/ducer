@@ -33,33 +33,33 @@ class Op:
     Conflict resolution strategies for set operations on maps.
     """
 
-    Avg = Op
+    Avg = ...
     """
     Select average, i.e., `sum(values) // len`.
     """
-    First = Op
+    First = ...
     """
     Select first value.
     """
-    Last = Op
+    Last = ...
     """
     Select last value.
     """
-    Max = Op
+    Max = ...
     """
     Select maximum.
     """
-    Median = Op
+    Median = ...
     """
     Select median, i.e., with `values = sorted(values)` and `mid = len // 2`
     for odd length `values[mid]`,
     and `(values[mid-1] + values[mid]) // 2` for even length.
     """
-    Mid = Op
+    Mid = ...
     """
     Select middle value, i.e., `values[len // 2]`.
     """
-    Min = Op
+    Min = ...
     """
     Select minimum.
     """
@@ -310,8 +310,10 @@ class Map:
 
     def symmetric_difference(self, path: str | Path, *others: Map, select=Op.Last) -> Buffer | None:
         """
-        Build a new map that is the symmetric difference between `self` and `others`,
-        meaning the resulting map will contain all keys occur an odd number of times.
+        Build a new map that is the symmetric difference between `self` and `others`.
+        The resulting map will contain all keys that appear an odd number of times, i.e.,
+        if only one other map is given, it will contain all keys that are in either
+        `self` or `others`, but not in both.
         `others` must be instances of `Map`.
         `select` speficies how conflicts are resolved if keys are
         present more than once.
@@ -515,7 +517,10 @@ class Set:
 
     def symmetric_difference(self, path: str | Path, *others: Set) -> Buffer | None:
         """
-        Build a new set that is the symmetric difference between `self` and `others`,
+        Build a new set that is the symmetric difference between `self` and `others`.
+        The resulting set will contain all keys that appear an odd number of times, i.e.,
+        if only one other set is given, it will contain all keys that are in either
+        `self` or `others`, but not in both.
         meaning the resulting set will contain all keys occur an odd number of times.
         `others` must be instances of `Set`.
         If path is `":memory:"`, returns a `Buffer` containing the set data

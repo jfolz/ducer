@@ -18,6 +18,8 @@ author = "Joachim Folz"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "myst_parser",
@@ -62,4 +64,5 @@ html_css_files = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "msgpack": ("https://msgpack-python.readthedocs.io/en/latest/", None),
 }

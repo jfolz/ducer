@@ -1,257 +1,355 @@
 API reference
 ====================
 
-This module provides classes and methods for working with finite-state transducers, enabling efficient operations on maps and sets.
+
+
+.. class:: Automaton
+
+    Automata can be used to efficiently apply complex search patterns to the keys of maps and sets.
+    Use one of the classmethods :meth:`never`, :meth:`always`, :meth:`str`, or :meth:`subsequence` to create a new automaton.
+    Add more complex behavior on top with :meth:`starts_with`, :meth:`complement`, :meth:`intersection`, or :meth:`union`.
+    E.g., an automaton that matches keys that start with ``b"foo"`` or ``b"bar"``::
+
+        a_foo = Automaton.str(b"foo")
+        a_bar = Automaton.str(b"bar")
+        a_foobar = a_foo.union(a_bar).starts_with()
+
+    .. classmethod:: always(cls) -> Automaton
+
+        Create a new ``Automaton`` that always matches.
+
+    .. classmethod:: never(cls) -> Automaton
+
+        Create a new ``Automaton`` that never matches.
+
+    .. classmethod:: str(cls, str: bytes) -> Automaton
+
+        Create a new ``Automaton`` that matches :class:`str` exactly.
+
+    .. classmethod:: subsequence(cls, str: bytes) -> Automaton
+
+        Create a new ``Automaton`` that subsequences matches :class:`str`.
+        E.g., ``b"bd"`` matches the key ``b"abcde"``.
+
+    .. method:: complement(self) -> Automaton
+
+        Modify this automaton to match any key that would previously not match.
+        Returns ``self`` to allow chaining with other methods.
+
+    .. method:: starts_with(self) -> Automaton
+
+        Modify this automaton to match any key that starts with a prefix that previously matched,
+        e.g., if ``self`` matched ``b"abc"``, it will now match ``b"abcde"``.
+        Returns ``self`` to allow chaining with other methods.
+
+    .. method:: intersection(self, other: Automaton) -> Automaton
+
+        Modify this automaton to match any key that both ``self`` and ``other`` matches.
+        ``other`` must be an instance of ``Automaton``.
+        Returns ``self`` to allow chaining with other methods.
+
+    .. method:: union(self, other: Automaton) -> Automaton
+
+        Modify this automaton to match any key that either ``self`` or ``other`` matches.
+        ``other`` must be an instance of ``Automaton``.
+        Returns ``self`` to allow chaining with other methods.
 
 
 
 .. class:: Buffer
 
-   Represents a buffer that can be converted to bytes or accessed in a buffer interface.
+    A read-only buffer returned by :meth:`Map.build` and :meth:`Set.build` when :class:`~pathlib.Path` is ``":memory:"``.
+    Use to create new :class:`Map` or :class:`Set` instances, or write to file.
+    ::
 
-   .. method:: __bytes__() -> bytes
+        from ducer import Set
+        buf = Set.build([b"a", b"b"], ":memory:")
+        s = Set(buf)
+        for k in s:
+            print(k)
+        with open("my.set", "wb") as f:
+            f.write(buf)
 
-      Converts the buffer to a byte representation.
 
-   .. method:: __getbuffer__()
 
-      Provides access to the buffer's data.
+.. class:: Map(data: SupportsBytes)
 
-   .. method:: __releasebuffer__()
+    An immutable map of bytes keys and non-negative integers, based on finite-state-transducers.
+    Typically uses a fraction of the memory as the builtin :class:`dict` and can be streamed from a file.
 
-      Releases the buffer’s data.
+    ``data`` can be any object that supports the buffer protocol,
+    e.g., :class:`Buffer`, :class:`bytes`, :class:`memoryview`, :class:`~mmap.mmap`, etc.
+    Use :meth:`Map.build` to create suitable ``data``.
+
+    .. important:: ``data`` needs to be contiguous.
+
+    To the extent that it's feasible, ducer maps are intended to be direct replacements for the builtin :class:`dict`.
+    For ``m, o: Map`` and ``k: bytes``, the following works as intended::
+
+        k in m
+        m == o
+        m[k]
+        m.get(k)
+        m.get(k, 42)
+        len(m)
+        for k in m:
+            pass
+        for k in m.keys():
+            pass
+        for v in m.values():
+            pass
+        for k, v in m.items():
+            pass
+
+    .. classmethod:: build(cls, path: str | ~pathlib.Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None
+
+        Build a map from an iterable of items ``(key: bytes, value: int)`` and write it to the given path.
+        If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data.
+        :class:`~pathlib.Path` can be :class:`str` or :class:`~pathlib.Path`.
+
+        .. hint::
+            Items can really be any sequence of length 2, but building from :class:`tuple` is fastest.
+            However, avoid converting items in Python for best performance.
+            Ideally, create tuples directly, e.g., if using msgpack,
+            set ``use_list=False`` for :func:`msgpack.unpackb` or :class:`msgpack.Unpacker`.
+
+    .. method:: copy(self) -> Map
+
+        Since :class:`Map` is immutable, returns self.
+
+    .. method:: get(self, key, default=None) -> int | None
+
+        Returns the given ``key`` if present, ``default`` otherwise.
+
+    .. method:: keys(self) -> Iterator[bytes]
+
+        Iterate over all keys.
+
+    .. method:: values(self) -> Iterator[int]
+
+        Iterate over all values.
+
+    .. method:: items(self) -> Iterator[Tuple[bytes, int]]
+
+        Iterate over all key-value items.
+
+    .. method:: range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+
+        Iterate over all key-value items with optional range limits for the key
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+        If no limits are given this is equivalent to ``iter(self)``.
+
+    .. method:: starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+
+        Iterate over all key-value items whose key starts with :class:`str`.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+
+    .. method:: subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+
+        Iterate over all key-value items whose key contain the subsequence :class:`str`.
+        Keys don't need to contain the subsequence consecutively,
+        e.g., ``b"bd"`` will match the key ``b"abcde"``.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+
+    .. method:: search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+
+        Iterate over all key-value items whose key matches the given ``Automaton``.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+
+    .. method:: difference(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+
+        Build a new map that is the difference between ``self`` and all ``others``,
+        meaning the resulting map will contain all keys that are in ``self``, but not in ``others``.
+        ``others`` must be instances of :class:`Map`.
+        ``select`` specifies how conflicts are resolved if keys are present more than once.
+        If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
+        Path can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+
+        Build a new map that is the intersection of ``self`` and ``others``.
+        ``others`` must be instances of :class:`Map`.
+        ``select`` specifies how conflicts are resolved if keys are present more than once.
+        If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
+        :class:`~pathlib.Path` can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+
+        Build a new map that is the symmetric difference between ``self`` and ``others``.
+        The resulting map will contain all keys that appear an odd number of times, i.e.,
+        if only one other set is given, it will contain all keys that are in either ``self`` or ``others``, but not in both.
+        ``others`` must be instances of :class:`Map`.
+        ``select`` specifies how conflicts are resolved if keys are present more than once.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: union(self, path: str | ~pathlib.Path, *others: Map, select=Op.Last) -> Buffer | None
+
+        Build a new map that is the union of ``self`` and ``others``.
+        ``others`` must be instances of :class:`Map`.
+        ``select`` specifies how conflicts are resolved if keys are present more than once.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
 
 
 .. class:: Op
 
-   Contains strategies for resolving conflicts during set operations on maps.
+    Conflict resolution strategies for set operations on maps.
 
-   .. attribute:: Avg
+    .. attribute:: Avg
 
-   .. attribute:: First
+        Select average, i.e., ``sum(values) // len``.
 
-   .. attribute:: Last
+    .. attribute:: First
 
-   .. attribute:: Max
+        Select first value.
 
-   .. attribute:: Median
+    .. attribute:: Last
 
-   .. attribute:: Mid
+        Select last value.
 
-   .. attribute:: Min
+    .. attribute:: Max
 
+        Select maximum.
 
+    .. attribute:: Median
 
-.. class:: Automaton
+        Select median, i.e., with ``values = sorted(values)`` and ``mid = len // 2``,
+        select ``values[mid]`` for odd length,
+        and ``(values[mid-1] + values[mid]) // 2`` for even length.
 
-   Automata for efficiently applying complex search patterns to keys of maps and sets.
-   Use class methods like `never`, `always`, `str`, or `subsequence` to create a new automaton. Modify behavior with methods like `starts_with`, `complement`, `intersection`, or `union`.
+    .. attribute:: Mid
 
-   Example:
+        Select middle value, i.e., ``values[len // 2]``.
 
-   .. code-block:: python
+    .. attribute:: Min
 
-      a_foo = Automaton.str(b"foo")
-      a_bar = Automaton.str(b"bar")
-      a_foobar = a_foo.union(a_bar).starts_with()
+        Select minimum.
 
-   .. method:: always() -> Automaton
 
-      Create a new `Automaton` that always matches.
 
-   .. method:: never() -> Automaton
+.. class:: Set(data: SupportsBytes)
 
-      Create a new `Automaton` that never matches.
+    An immutable set of bytes keys, based on finite-state-transducers.
+    Typically uses a fraction of the memory as the builtin ``set`` and can be streamed from a file.
 
-   .. method:: str(str: bytes) -> Automaton
+    ``data`` can be any object that supports the buffer protocol,
+    e.g., :class:`Buffer`, :class:`bytes`, :class:`memoryview`, :class:`~mmap.mmap`, etc.
+    Use :meth:`Map.build` to create suitable ``data``.
 
-      Create a new `Automaton` that matches `str` exactly.
+    .. important:: ``data`` needs to be contiguous.
 
-   .. method:: subsequence(str: bytes) -> Automaton
+    To the extent that it's feasible, ducer sets are intended to be direct replacements for the builtin :class:`set`.
+    For ``s, o: Set``, and ``k: bytes``, the following works as intended::
 
-      Create a new `Automaton` that matches any subsequence of `str`. For example, `"bd"` matches the key `"abcde"`.
+        k in s
+        s == o
+        len(s)
+        for k in s:
+            pass
+        s.isdisjoint(o)
+        s.issubset(o)
+        s <= o  # subset
+        s < o  # proper subset
+        s.issuperset(o)
+        s >= o  # superset
+        s > o  # proper superset
 
-   .. method:: complement() -> Automaton
+    .. classmethod:: build(cls, iterable: Iterable[SupportsBytes], path: str | ~pathlib.Path) -> Buffer | None
 
-      Modify this automaton to match any key that would previously not match. Returns `self` for chaining with other methods.
+        Build a set from an iterable of items ``key: bytes`` and write it to the given path.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
-   .. method:: starts_with() -> Automaton
+    .. method:: copy(self) -> Set
 
-      Modify this automaton to match any key that starts with a prefix that would previously match. Returns `self` for chaining with other methods.
+        Since sets are immutable, returns self.
 
-   .. method:: intersection(other: Automaton) -> Automaton
+    .. method:: keys(self) -> Iterator[bytes]
 
-      Modify this automaton to match any key that both `self` and `other` match. `other` must be an instance of `Automaton`. Returns `self` for chaining with other methods.
+        Iterate over all keys.
 
-   .. method:: union(other: Automaton) -> Automaton
+    .. method:: range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
 
-      Modify this automaton to match any key that either `self` or `other` matches. `other` must be an instance of `Automaton`. Returns `self` for chaining with other methods.
+        Iterate over all keys with optional range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+        If no limits are given this is equivalent to ``iter(self)``.
 
+    .. method:: starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
 
+        Iterate over all keys whose key starts with :class:`str`.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
 
-.. class:: Map
+    .. method:: subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
 
-   An immutable map with `bytes` keys and non-negative integer values, based on finite-state transducers. It typically uses less memory compared to the built-in `dict` and can be streamed from a file.
-
-   .. method:: build(path: str | Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None
-
-      Build a `Map` from an iterable of `(key: bytes, value: int)` and write it to the given path. If `path` is `":memory:"`, returns a `Buffer` containing the map data. `path` can be of type `str` or `pathlib.Path`.
-
-   .. method:: __init__(data)
-
-      Initialize the `Map` with the given data.
-
-   .. method:: __len__() -> int
-
-      Return the number of items in the map.
-
-   .. method:: __iter__() -> Iterator[bytes]
-
-      Return an iterator over the keys in the map.
-
-   .. method:: __getitem__(key) -> int
-
-      Return the value for the given `key`.
-
-   .. method:: __eq__(other) -> bool
-
-      Check if `self` is equal to `other`.
-
-   .. method:: get(key, default=None) -> int | None
-
-      Return the value for the given `key` if present, or `default` otherwise.
-
-   .. method:: keys() -> Iterator[bytes]
-
-      Iterate over all keys.
-
-   .. method:: values() -> Iterator[int]
-
-      Iterate over all values.
-
-   .. method:: items() -> Iterator[Tuple[bytes, int]]
-
-      Iterate over all key-value items.
-
-   .. method:: range(ge=None, gt=None, le=None, lt=None) -> Iterator[Tuple[bytes, int]]
-
-      Iterate over all key-value items with optional range limits for the key: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than). If no limits are given, this is equivalent to `iter(self)`.
-
-   .. method:: starts_with(str: bytes, ge=None, gt=None, le=None, lt=None) -> Iterator[Tuple[bytes, int]]
-
-      Iterate over all key-value items whose key starts with `str`. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: subsequence(str: bytes, ge=None, gt=None, le=None, lt=None) -> Iterator[Tuple[bytes, int]]
-
-      Iterate over all key-value items whose key contains the subsequence `str`. Keys do not need to contain the subsequence consecutively. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: search(automaton: Automaton, ge=None, gt=None, le=None, lt=None) -> Iterator[Tuple[bytes, int]]
-
-      Iterate over all key-value items whose key matches the given `Automaton`. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: difference(*others, select=Op.Last) -> Buffer | None
-
-      Build a new map that is the difference between `self` and all `others`, meaning the resulting map will contain all keys that are in `self`, but not in `others`. `others` must be instances of `Map`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the map data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: intersection(*others, select=Op.Last) -> Buffer | None
-
-      Build a new map that is the intersection of `self` and `others`. `others` must be instances of `Map`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the map data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: symmetric_difference(*others, select=Op.Last) -> Buffer | None
-
-      Build a new map that is the symmetric difference between `self` and `others`, meaning the resulting map will contain all keys that occur an odd number of times. `others` must be instances of `Map`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the map data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: union(*others, select=Op.Last) -> Buffer | None
-
-      Build a new map that is the union of `self` and `others`. `others` must be instances of `Map`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the map data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-
-
-.. class:: Set
-
-   An immutable set of `bytes` keys, based on finite-state transducers. It typically uses less memory compared to the built-in `set` and can be streamed from a file.
-
-   .. method:: build(path: str | Path, iterable: Iterable[SupportsBytes]) -> Buffer | None
-
-      Build a `Set` from an iterable of `bytes` and write it to the given path. If `path` is `":memory:"`, returns a `Buffer` containing the set data. `path` can be of type `str` or `pathlib.Path`.
-
-   .. method:: __init__(data)
-
-      Initialize the `Set` with the given data.
-
-   .. method:: __len__() -> int
-
-      Return the number of items in the set.
-
-   .. method:: __iter__() -> Iterator[bytes]
-
-      Return an iterator over the keys in the set.
-
-   .. method:: __eq__(other) -> bool
-
-      Check if `self` is equal to `other`.
-
-   .. method:: __gt__(other: Set) -> bool
-
-      Check if `self` is greater than `other`.
-
-   .. method:: __ge__(other: Set) -> bool
-
-      Check if `self` is greater than or equal to `other`.
-
-   .. method:: __lt__(other: Set) -> bool
-
-      Check if `self` is less than `other`.
-
-   .. method:: __le__(other: Set) -> bool
-
-      Check if `self` is less than or equal to `other`.
-
-   .. method:: isdisjoint(other: Set) -> bool
-
-      Return `True` if the set has no elements in common with `other`. Sets are disjoint if their intersection is the empty set.
-
-   .. method:: issubset(other: Set) -> bool
-
-      Test whether every element in `self` is in `other`.
-
-   .. method:: issuperset(other: Set) -> bool
-
-      Test whether every element in `other` is in `self`.
-
-   .. method:: keys() -> Iterator[bytes]
-
-      Return an iterator over the keys in the set. This is equivalent to `iter(self)`.
-
-   .. method:: range(ge=None, gt=None, le=None, lt=None) -> Iterator[bytes]
-
-      Iterate over all keys with optional range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than). If no limits are given, this is equivalent to `iter(self)`.
-
-   .. method:: starts_with(str: bytes, ge=None, gt=None, le=None, lt=None) -> Iterator[bytes]
-
-      Iterate over all keys that start with `str`. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: subsequence(str: bytes, ge=None, gt=None, le=None, lt=None) -> Iterator[bytes]
-
-      Iterate over all keys that contain the subsequence `str`. Keys do not need to contain the subsequence consecutively. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: search(automaton: Automaton, ge=None, gt=None, le=None, lt=None) -> Iterator[bytes]
-
-      Iterate over all keys that match the given `Automaton`. Optionally apply range limits: `ge` (greater than or equal), `gt` (greater than), `le` (less than or equal), and `lt` (less than).
-
-   .. method:: difference(*others, select=Op.Last) -> Buffer | None
-
-      Build a new set that is the difference between `self` and all `others`, meaning the resulting set will contain all keys that are in `self`, but not in `others`. `others` must be instances of `Set`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the set data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: intersection(*others, select=Op.Last) -> Buffer | None
-
-      Build a new set that is the intersection of `self` and `others`. `others` must be instances of :class:`Set`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the set data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: symmetric_difference(*others, select=Op.Last) -> Buffer | None
-
-      Build a new set that is the symmetric difference between `self` and `others`, meaning the resulting set will contain all keys that occur an odd number of times. `others` must be instances of `Set`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the set data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
-
-   .. method:: union(*others, select=Op.Last) -> Buffer | None
-
-      Build a new set that is the union of `self` and `others`. `others` must be instances of `Set`. `select` specifies how conflicts are resolved if keys are present more than once. If `path` is `":memory:"`, returns a `Buffer` containing the set data instead of writing to `path`. `path` can be `str` or `pathlib.Path`.
+        Iterate over all keys that contain the subsequence :class:`str`.
+        Keys don't need to contain the subsequence consecutively,
+        e.g., ``b"bd"`` will match the key ``b"abcde"``.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+
+    .. method:: search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
+
+        Iterate over all keys that match the given ``Automaton``.
+        Optionally apply range limits
+        ``ge`` (greater than or equal),
+        ``gt`` (greater than),
+        ``le`` (less than or equal),
+        and ``lt`` (less than).
+
+    .. method:: difference(self, path: str | ~pathlib.Path, *others: Set) -> Buffer | None
+
+        Build a new set that is the difference between ``self`` and all ``others``,
+        meaning the resulting set will contain all keys that are in ``self``, but not in ``others``.
+        ``others`` must be instances of :class:`Set`.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Set) -> Buffer | None
+
+        Build a new set that is the intersection of ``self`` and ``others``.
+        ``others`` must be instances of :class:`Set`.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Set) -> Buffer | None
+
+        Build a new set that is the symmetric difference between ``self`` and ``others``,
+        The resulting set will contain all keys that appear an odd number of times, i.e.,
+        if only one other set is given, it will contain all keys that are in either ``self`` or ``others``, but not in both.
+        ``others`` must be instances of :class:`Set`.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
+
+    .. method:: union(self, path: str | ~pathlib.Path, *others: Set) -> Buffer | None
+
+        Build a new set that is the union of ``self`` and ``others``.
+        ``others`` must be instances of :class:`Set`.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data instead of writing to path.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
