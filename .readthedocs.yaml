@@ -11,9 +11,6 @@ build:
   tools:
     python: "3.12"
     rust: "latest"
-  jobs:
-    post_checkout:
-      - mv ducer/_fst.pyi ducer/_fst.py
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
