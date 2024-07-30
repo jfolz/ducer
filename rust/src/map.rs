@@ -323,7 +323,7 @@ impl Map {
         Ok(Self { inner })
     }
 
-    /// Since `Map` is stateless, returns self.
+    /// Since `Map` is immutable, returns self.
     fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -355,10 +355,13 @@ impl Map {
         }
     }
 
+    /// Implement `iter(self)`.
+    /// Like the builtin `dict`, only keys are returned.
     fn __iter__(&self) -> KeyIterator {
         self.keys()
     }
 
+    /// Implement self[key].
     fn __getitem__(&self, key: &[u8]) -> PyResult<u64> {
         if let Some(val) = self.inner.get(key) {
             Ok(val)
@@ -367,14 +370,18 @@ impl Map {
         }
     }
 
+    /// Returns whether this map contains `key`.
     fn __contains__(&self, key: &[u8]) -> bool {
         self.inner.contains_key(key)
     }
 
+    /// Returns number of items in this map.
     fn __len__(&self) -> usize {
         self.inner.len()
     }
 
+    /// Returns whether this map equals `other`.
+    /// Other must be `Map`.
     fn __eq__(&self, other: &Map) -> bool {
         self.inner.len() == other.inner.len() && {
             let mut s = self.inner.stream();

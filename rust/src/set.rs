@@ -232,6 +232,7 @@ impl Set {
         }
     }
 
+    /// Implement `iter(self)`.
     #[allow(clippy::needless_pass_by_value)]
     fn __iter__(&self) -> KeyIterator {
         KeyIteratorBuilder {
@@ -242,14 +243,18 @@ impl Set {
         .build()
     }
 
+    /// Returns whether `key` is in this set.
     fn __contains__(&self, key: &[u8]) -> bool {
         self.inner.contains(key)
     }
 
+    /// Returns number of keys in this set.
     fn __len__(&self) -> usize {
         self.inner.len()
     }
 
+    /// Returns this set equals `other`.
+    /// `other` must be `Set`.
     fn __eq__(&self, other: &Set) -> bool {
         self.inner.len() == other.inner.len() && {
             let mut s = self.inner.stream();
@@ -268,18 +273,26 @@ impl Set {
         }
     }
 
+    /// Returns whether this set is a superset of `other`.
+    /// `other` must be `Set`.
     fn __ge__(&self, other: &Set) -> bool {
         self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
     }
 
+    /// Returns whether this set is a proper superset of `other`.
+    /// `other` must be `Set`.
     fn __gt__(&self, other: &Set) -> bool {
         self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
     }
 
+    /// Returns whether this set is a subset of `other`.
+    /// `other` must be `Set`.
     fn __le__(&self, other: &Set) -> bool {
         self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
     }
 
+    /// Returns whether this set is a proper subset of `other`.
+    /// `other` must be `Set`.
     fn __lt__(&self, other: &Set) -> bool {
         self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
     }

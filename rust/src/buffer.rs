@@ -10,17 +10,6 @@ use std::{
     ptr,
 };
 
-#[pyclass]
-pub struct Buffer {
-    data: Vec<u8>,
-}
-
-impl Buffer {
-    pub fn new(data: Vec<u8>) -> Self {
-        Buffer { data }
-    }
-}
-
 /// A read-only buffer returned by `Map.build` and `Set.build`
 /// when path is set to `":memory:"`.
 /// Use to create new `Map` or `Set` instances, or write to file.
@@ -34,6 +23,17 @@ impl Buffer {
 /// with open("my.set", "wb") as f:
 ///     f.write(buf)
 /// ```
+#[pyclass]
+pub struct Buffer {
+    data: Vec<u8>,
+}
+
+impl Buffer {
+    pub fn new(data: Vec<u8>) -> Self {
+        Buffer { data }
+    }
+}
+
 #[pymethods]
 impl Buffer {
     #[allow(clippy::cast_possible_wrap)]
