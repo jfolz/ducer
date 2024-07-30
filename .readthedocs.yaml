@@ -10,8 +10,9 @@ build:
   os: ubuntu-lts-latest
   tools:
     python: "latest"
-  commands:
-    - python doc/prep.py
+  jobs:
+    pre_build:
+      - python doc/prep.py
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
