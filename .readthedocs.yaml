@@ -7,9 +7,10 @@ version: 2
 
 # Set the version of Python and other tools you might need
 build:
-  os: ubuntu-22.04
+  os: ubuntu-lts-latest
   tools:
     python: "3.12"
+    rust: "latest"
   jobs:
     post_checkout:
       - mv ducer/_fst.pyi ducer/_fst.py
