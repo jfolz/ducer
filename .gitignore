@@ -3,6 +3,7 @@
 /scratch
 /wheelhouse
 /doc/build
+/doc/source/README.md
 __pycache__
 .mypy_cache
 .pytest_cache
