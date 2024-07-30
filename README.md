@@ -213,7 +213,7 @@ a list of possible values is assembled.
 If the key is present in `self`, then it will be the first value.
 Values from `others` are added in given order.
 By default the last values in the list is used to mimic the behavior
-of [dict.update](https://docs.python.org/3/library/stdtypes.html#dict.update).
+of [`dict.update`](https://docs.python.org/3/library/stdtypes.html#dict.update).
 Currently, you can choose between these pre-defined operations:
 
 - [`ducer.Op.First`](https://ducer.readthedocs.io/stable/api_reference.html#Op.First) -- first element
