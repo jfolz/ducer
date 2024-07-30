@@ -47,7 +47,9 @@ so there are some limitations you should consider before proceeding:
 
 ## Building
 
-Above, we already showed that you can build maps in memory by passing
+Above, we already showed that
+[`Map.build`](https://ducer.readthedocs.io/stable/api_reference.html#Map.build)
+can build maps in memory by passing
 `":memory:"` as path:
 
 ```Python
@@ -74,7 +76,8 @@ One key advantage of ducer maps is streamability.
 Unlike the builtin [`dict`](https://docs.python.org/3/library/stdtypes.html#dict),
 a [`Map`](https://ducer.readthedocs.io/stable/api_reference.html#Map)
 does not have to reside entirely in memory.
-You can, e.g., use the builtin mmap to stream map data:
+You can, e.g., use the builtin
+[`mmap`](https://docs.python.org/3/library/mmap.html#mmap.mmap) to stream map data:
 
 ```Python
 with open("path/to/my.map", "rb") as f:
@@ -83,8 +86,9 @@ with open("path/to/my.map", "rb") as f:
 ```
 
 High compression ratios can, however, allow storing maps entirely in memory.
-In our experience, at least for fast SSD storage, performance is virtually
-identical, expect reading the file into memory takes extra time.
+In our experience, at least for local SSD storage, performance is virtually
+identical, expect pre-loading data takes extra time.
+Pre-loading can still make sense though, e.g., with networked storage.
 
 ```Python
 with open("path/to/my.map", "rb") as f:
@@ -246,19 +250,25 @@ The underlying FSTs allow for some advanced search patterns that would
 otherwise be costly to implement on top of
 [`dict`](https://docs.python.org/3/library/stdtypes.html#dict)
 and [`set`](https://docs.python.org/3/library/stdtypes.html#set).
-Most basic, you can iterate over a range of keys
-(where ge = greater or equals, gt = greater than,
-le = less than or equals, lt = less than):
+Most basic, you can iterate over a range of keys, where
+`ge` = greater or equals,
+`gt` = greater than,
+`le` = less than or equals,
+and `lt` = less than:
 
 ```Python
 m.range(ge=b"key17", lt=b"key42")
 m.range(gt=b"key17", le=b"key42")
 ```
 
-For maps `range` yields key-value tuples, meaning `m.range()` without
-limits is equivalent to `m.items()`.
+For maps this yields key-value tuples, meaning
+[`m.range()`](https://ducer.readthedocs.io/stable/api_reference.html#Map.range)
+without limits is equivalent to
+[`m.items()`](https://ducer.readthedocs.io/stable/api_reference.html#Map.items).
 
-You can also iterate over all keys that start with a certain prefix,
+You can also iterate over all keys that
+[start with](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.starts_with)
+a certain prefix,
 with optional limits same as `range`:
 
 ```Python
@@ -266,7 +276,9 @@ m.starts_with(b"key", ge=b"key17", lt=b"key42")
 m.starts_with(b"key", gt=b"key17", le=b"key42")
 ```
 
-You can also search for subsequences, e.g., all keys matching `*k*7*`,
+You can also search for
+[subsequences](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.subsequence)
+, e.g., all keys matching `*k*7*`,
 again with optional limits:
 
 ```Python
@@ -277,31 +289,38 @@ m.subsequence(b"k7", gt=b"key17", le=b"key42")
 Finally, you can create an `Automaton` to create your own search patterns.
 The following automata are available:
 
-- always
-- never
-- str
-- subsequence
-- complement
-- starts_with
-- intersection
-- union
+- [`always`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.always)
+- [`never`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.never)
+- [`str`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.str)
+- [`subsequence`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.subsequence)
+- [`complement`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.complement)
+- [`starts_with`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.starts_with)
+- [`intersection`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.intersection)
+- [`union`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.union)
 
-For example, to recreate `Map.starts_with`, you can use the following
-automata with the `Map.search` method:
+For example, to recreate
+[`Map.starts_with`](https://ducer.readthedocs.io/stable/api_reference.html#Map.starts_with),
+you can use the following
+automata with the
+[`Map.search`](https://ducer.readthedocs.io/stable/api_reference.html#Map.search)
+method:
 
 ```Python
 a = ducer.Automaton.str(b"key").starts_with()
 m.search(a)
 ```
 
-Add `complement` to search for keys that do not start with the string:
+Add
+[`complement`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.complement)
+to search for keys that do not start with the string:
 
 ```Python
 a = ducer.Automaton.str(b"key").starts_with().complement()
 m.search(a)
 ```
 
-Finally, you can combine multiple automata, e.g. with `union`:
+Finally, you can combine multiple automata, e.g. with
+[`union`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.union):
 
 ```Python
 a1 = ducer.Automaton.str(b"key").starts_with()
