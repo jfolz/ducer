@@ -2,7 +2,7 @@
 
 This package provides Python bindings for the excellent Rust crate
 [fst](https://github.com/BurntSushi/fst) by Andrew Gallant.
-`Map` and `Set` classes allow building compact representations from sorted
+[](Map) and [](Set) classes allow building compact representations from sorted
 Python iterables.
 
 
@@ -36,7 +36,7 @@ results in a 4.6 GiB file.
 Performance is rarely free,
 so there are some limitations you should consider before proceeding:
 
-* Keys **must** be `bytes`
+* Keys **must** be **[](bytes)**
 * Keys **must** be inserted in lexicographical order
 * Map values **must** be non-negative integers less than 2^64
 * Once built, maps and sets **cannot** be altered
@@ -53,7 +53,7 @@ data = ducer.Map.build(":memory:", items)
 ```
 
 If you pass any other path
-(either `str` or `pathlib.Path`; the parent directory must exist),
+(either [str](str) or [Path](pathlib.Path); the parent directory must exist),
 your map will be written directly to that file:
 
 ```Python
@@ -67,7 +67,7 @@ Building a map like this uses virtually no extra memory.
 ## Opening
 
 One key advantage of ducer maps is streamability.
-Unlike the builtin `dict`, a `Map` does not have to reside entirely in memory.
+Unlike the builtin [](dict), a [](Map) does not have to reside entirely in memory.
 You can, e.g., use the builtin mmap to stream map data:
 
 ```Python
@@ -90,8 +90,8 @@ m = ducer.Map(data)
 
 ## Access
 
-To the extent that it's feasible, `Map` and `Set` are intended to be
-direct replacements for the builtin Python `dict` and `set`.
+To the extent that it's feasible, [](Map) and [](Set) are intended to be
+direct replacements for the builtin Python [](dict) and [](set).
 For `m, o: Map` and `k: bytes`, the following works as intended:
 
 ```Python
@@ -129,7 +129,7 @@ s > o  # proper superset
 ```
 
 **Note:** Comparison operations are currently only implemented
-for other `Set` objects, not the builtin `set`.
+for other [](Set) objects, not the builtin [](set).
 This may change in a future version if there is demand for it.
 
 
@@ -138,7 +138,7 @@ This may change in a future version if there is demand for it.
 
 ### Not implemented
 
-Since `Map` is immutable, the following are **not implemented**:
+Since [](Map) is immutable, the following are **not implemented**:
 - `clear`
 - `fromkeys`
 - `pop`
@@ -146,7 +146,7 @@ Since `Map` is immutable, the following are **not implemented**:
 - `setdefault`
 - `update`, `|=`
 
-Since `Set` is immutable, the following are **not implemented**:
+Since [](Set) is immutable, the following are **not implemented**:
 - `add`
 - `clear`
 - `difference_update`, `-=`
@@ -182,7 +182,7 @@ all elements of `s` that are not present in `others`.
 
 ### Set operations on maps
 
-Unlike the builtin `dict`, the ducer `Map` offers set operations.
+Unlike the builtin [](dict), the ducer [](Map) offers set operations.
 The syntax is the same as for sets:
 
 ```Python
@@ -197,16 +197,16 @@ a list of possible values is assembled.
 If the key is present in `self`, then it will be the first value.
 Values from `others` are added in given order.
 By default the last values in the list is used to mimic the behavior
-of `dict.update`.
+of [](dict.update).
 Currently, you can choose between these pre-defined operations:
 
-- `ducer.Op.First` -- first element
-- `ducer.Op.Mid` -- middle element, left if even number of values
-- `ducer.Op.Last` -- the default
-- `ducer.Op.Min` -- minimum value
-- `ducer.Op.Avg` -- average value cast to `int`
-- `ducer.Op.Median` -- median value cast to `int`
-- `ducer.Op.Max` -- maximum value
+- [ducer.Op.First](#Op.First) -- first element
+- [ducer.Op.Mid](#Op.Mid) -- middle element, left if even number of values
+- [ducer.Op.Last](#Op.Last) -- the default
+- [ducer.Op.Min](#Op.Min) -- minimum value
+- [ducer.Op.Avg](#Op.Avg) -- average value cast to `int`
+- [ducer.Op.Median](#Op.Median) -- median value cast to `int`
+- [ducer.Op.Max](#Op.Max) -- maximum value
 
 Some examples:
 
@@ -227,7 +227,7 @@ print(dict(mu.items()))
 ## Advanced search patterns
 
 The underlying FSTs allow for some advanced search patterns that would
-otherwise be costly to implement on top of `dict` and `set`.
+otherwise be costly to implement on top of [](dict) and [](set).
 Most basic, you can iterate over a range of keys
 (where ge = greater or equals, gt = greater than,
 le = less than or equals, lt = less than):

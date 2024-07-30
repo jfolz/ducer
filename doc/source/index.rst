@@ -5,8 +5,4 @@
    :hidden:
 
    Readme <self>
-
-.. toctree::
-   :maxdepth: 2
-
    api_reference
