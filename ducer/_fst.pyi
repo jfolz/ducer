@@ -22,15 +22,9 @@ class Buffer:
     ```
     """
 
-    def __buffer__(self, flags):
-        """
-        """
-        ...
+    def __buffer__(self, flags): ...
 
-    def __release_buffer__(self, buffer):
-        """
-        """
-        ...
+    def __release_buffer__(self, buffer): ...
 
 
 @final
@@ -179,26 +173,42 @@ class Map:
 
     def __init__(self, data):
         """
+        Create a `Set` from the given data.
+        `data` can be any object that supports the buffer protocol,
+        e.g., `bytes`, `memoryview`, `mmap`, etc.
+        Important: `data` needs to be contiguous.
         """
         ...
 
     def __len__(self):
         """
+        Returns number of items in this map.
+        """
+        ...
+
+    def __contains__(self, key: bytes) -> bool:
+        """
+        Returns whether this map contains `key`.
         """
         ...
 
     def __iter__(self) -> Iterator[bytes]:
         """
+        Implement `iter(self)`.
+        Like the builtin `dict`, only keys are returned.
         """
         ...
 
     def __getitem__(self, key) -> int:
         """
+        Implement self[key].
         """
         ...
 
     def __eq__(self, other) -> bool:
         """
+        Returns whether this map equals `other`.
+        Other must be `Map`.
         """
         ...
 
@@ -350,41 +360,63 @@ class Set:
 
     def __init__(self, data):
         """
+        Create a `Set` from the given data.
+        `data` can be any object that supports the buffer protocol,
+        e.g., `bytes`, `memoryview`, `mmap`, etc.
+        Important: `data` needs to be contiguous.
         """
         ...
 
     def __len__(self):
         """
+        Returns number of keys in this set.
+        """
+        ...
+
+    def __contains__(self, key: bytes) -> bool:
+        """
+        Returns whether `key` is in this set.
         """
         ...
 
     def __iter__(self) -> Iterator[bytes]:
         """
+        Implement `iter(self)`.
         """
         ...
 
     def __eq__(self, other) -> bool:
         """
+        Returns this set equals `other`.
+        `other` must be `Set`.
         """
         ...
 
     def __gt__(self, other: Set) -> bool:
         """
+        Returns whether this set is a proper superset of `other`.
+        `other` must be `Set`.
         """
         ...
 
     def __ge__(self, other: Set) -> bool:
         """
+        Returns whether this set is a superset of `other`.
+        `other` must be `Set`.
         """
         ...
 
     def __lt__(self, other: Set) -> bool:
         """
+        Returns whether this set is a proper subset of `other`.
+        `other` must be `Set`.
         """
         ...
 
     def __le__(self, other: Set) -> bool:
         """
+        Returns whether this set is a subset of `other`.
+        `other` must be `Set`.
         """
         ...
 
