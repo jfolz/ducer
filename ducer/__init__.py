@@ -13,5 +13,5 @@ __all__ = (
 try:
     __version__ = metadata.version("ducer")
 except metadata.PackageNotFoundError:
-    __version__ = "1.0.0"
+    __version__ = "1.0.2"
 del metadata
