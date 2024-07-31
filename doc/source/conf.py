@@ -56,6 +56,21 @@ html_theme_options = {
         "color-highlight-on-target": "rgba(101, 31, 255, 0.2)",
         "color-background-hover--transparent": "#80808010",
     },
+    "source_repository": "https://github.com/jfolz/ducer",
+    "source_branch": "main",
+    "source_directory": "doc/source/",
+}
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "links.html",
+        "sidebar/ethical-ads.html",
+        "sidebar/scroll-end.html",
+        "sidebar/variant-selector.html",
+    ]
 }
 html_css_files = [
     "css/custom.css",
