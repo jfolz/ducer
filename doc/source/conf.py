@@ -37,9 +37,9 @@ html_title = project
 html_theme = "furo"
 html_static_path = ["_static"]
 html_theme_options = {
-    #"light_logo": "img/sqltrack_minified.svg",
-    #"dark_logo": "img/sqltrack_minified.svg",
-    #"sidebar_hide_name": True,
+    "light_logo": "img/duck.svg",
+    "dark_logo": "img/duck.svg",
+    "sidebar_hide_name": True,
     "light_css_variables": {
         "color-brand-primary": "#005fc8",
         "color-brand-content": "#005fc8",

@@ -328,3 +328,9 @@ a2 = ducer.Automaton.str(b"other").starts_with()
 a = a1.union(a2)
 m.search(a)
 ```
+
+
+
+## Acknowledgements
+
+Ducer is supported by the [SustainML](https://sustainml.eu/) project.
