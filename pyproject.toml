@@ -37,7 +37,7 @@ license = { file = "LICENSE" }
 
 [project.urls]
 Homepage = "https://github.com/jfolz/ducer"
-Documentation = "https://github.com/jfolz/ducer/blob/main/README.md"
+Documentation = "https://ducer.readthedocs.io/stable/"
 Repository = "https://github.com/jfolz/ducer"
 Issues = "https://github.com/jfolz/ducer/issues"
 Changelog = "https://github.com/jfolz/ducer/blob/main/CHANGELOG.md"
