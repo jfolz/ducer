@@ -4,5 +4,5 @@
 .. toctree::
    :hidden:
 
-   Readme <self>
+   Getting started <self>
    api_reference

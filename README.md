@@ -1,11 +1,18 @@
-# Ducer
+# Ducer documentation
 
-This package provides Python bindings for the excellent Rust crate
+This package provides fast and compact read-only
+[maps](https://ducer.readthedocs.io/stable/api_reference.html#Map)
+and
+[sets](https://ducer.readthedocs.io/stable/api_reference.html#Set)
+that scale up to Billions of keys, while being light on resources
+with a streamable file format.
+Complex search patterns that would be infeasible with Python's builtin
+[`dict`](https://docs.python.org/3/library/stdtypes.html#dict)
+and [`set`](https://docs.python.org/3/library/stdtypes.html#set)
+are not just possible, but very efficient.
+All of these amazing things are achieved with finite-state-transducers
+provided by the excellent Rust crate
 [fst](https://github.com/BurntSushi/fst) by Andrew Gallant.
-[`Map`](https://ducer.readthedocs.io/stable/api_reference.html#Map)
-and [`Set`](https://ducer.readthedocs.io/stable/api_reference.html#Set)
-classes allow building compact representations from sorted
-Python iterables.
 
 
 
@@ -19,17 +26,24 @@ import ducer
 n = 1_000_000_000
 items = ((b"%09d" % i, n-i) for i in range(n))
 data = ducer.Map.build(":memory:", items)
+m = Map(data)
+assert m[b"900000000"] == 100_000_000
 ```
 
-Creating this map takes about 4 minutes on my humble laptop,
-which translates to almost 4 Million items per second.
-About 3 minutes is spent in Python just creating the item tuples.
-This scenario is almost a best case for FSTs, so the resulting
+In our example, most of the time is spent in Python creating item tuples.
+Regardless, building happens at almost 4 Million items per second
+on my humble laptop.
+Retrieving individual keys is similarly speedy, and simply iterating
+over all items is twice as fast at 8 Million items per second.
+
+This toy example is almost a best case for FSTs, so the resulting
 output is just 464 bytes.
-A real-world example with 1.1 Billion keys, where the
-[msgpacked](https://github.com/msgpack/msgpack-python)
-key-value pairs occupy 21 GiB (without any kind of searchability),
+A real-world example with 1.1 Billion keys, where the key-value pairs
+occupy 21 GiB without any kind of searchability (stored in already quite
+compact [msgpack](https://github.com/msgpack/msgpack-python) format),
 results in a 4.6 GiB file.
+Building and retrieval are naturally a bit slower,
+but still within the 2-3 Million items per second range.
 
 
 
@@ -42,6 +56,25 @@ so there are some limitations you should consider before proceeding:
 * Keys **must** be inserted in lexicographical order
 * Map values **must** be non-negative integers less than 2^64
 * Once built, maps and sets **cannot** be altered
+
+
+
+## Installation
+
+Most users should be able to simply do:
+
+```
+pip install ducer
+```
+
+To build from source you will need a recent Rust toolchain.
+Use your preferred method of installation, or follow the official
+[instructions](https://www.rust-lang.org/tools/install) to install Rust.
+Then run the following at the toplevel of the repository:
+
+```
+pip install .
+```
 
 
 
@@ -188,10 +221,10 @@ have slightly different syntax to accomodate the necessary path.
 For `s: Set` and `others: Iterable[Set]`:
 
 ```Python
-s.difference("path/to/my.set", *others)
-s.intersection("path/to/my.set", *others)
-s.symmetric_difference("path/to/my.set", *others)
-s.union("path/to/my.set", *others)
+s.difference("path/to/result.set", *others)
+s.intersection("path/to/result.set", *others)
+s.symmetric_difference("path/to/result.set", *others)
+s.union("path/to/result.set", *others)
 ```
 
 Like the standard library, difference will create the set of
@@ -206,10 +239,10 @@ offers set operations.
 The syntax is the same as for sets:
 
 ```Python
-m.difference("path/to/my.map", *others)
-m.intersection("path/to/my.map", *others)
-m.symmetric_difference("path/to/my.map", *others)
-m.union("path/to/my.map", *others)
+m.difference("path/to/result.map", *others)
+m.intersection("path/to/result.map", *others)
+m.symmetric_difference("path/to/result.map", *others)
+m.union("path/to/result.map", *others)
 ```
 
 To resolve conflicts between keys present in multiple maps,
