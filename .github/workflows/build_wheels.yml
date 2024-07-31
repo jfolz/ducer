@@ -26,6 +26,7 @@ jobs:
       - name: Run docstring check
         run: python check_docstrings.py
   build_wheels:
+    needs: [doc_consistency]
     name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
