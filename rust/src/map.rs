@@ -337,7 +337,7 @@ fn select_value(sf: Op, posval: &[IndexedValue]) -> u64 {
 /// Further, the |, &, -, ^ operators are also not implemented,
 /// since it is not possible to specify the storage path.
 /// Use Map.union, Map.intersection, Map.difference, and Map.symmetric_difference instead.
-#[pyclass(mapping)]
+#[pyclass(mapping, subclass)]
 pub struct Map {
     inner: Arc<PyMap>,
 }
@@ -347,7 +347,7 @@ impl Map {
     /// Create a Map from the given data.
     /// data can be any object that supports the buffer protocol,
     /// e.g., bytes, memoryview, mmap, etc.
-    /// 
+    ///
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
@@ -368,7 +368,7 @@ impl Map {
     /// and write it to the given path.
     /// If path is ":memory:", returns a Buffer containing the map data.
     /// path can be str or Path.
-    /// 
+    ///
     /// Hint:
     ///     Items can really be any sequence of length 2, but building from tuple is fastest.
     ///     However, avoid converting items in Python for best performance.

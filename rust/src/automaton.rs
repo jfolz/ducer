@@ -420,11 +420,11 @@ impl Automaton for ArcNode {
 /// Add more complex behavior on top with starts_with, complement,
 /// intersection, or union.
 /// E.g., an automaton that matches keys that start with b"foo" or b"bar":
-/// 
+///
 ///     a_foo = Automaton.str(b"foo")
 ///     a_bar = Automaton.str(b"bar")
 ///     a_foobar = a_foo.union(a_bar).starts_with()
-#[pyclass(name = "Automaton")]
+#[pyclass(name = "Automaton", subclass)]
 #[allow(clippy::module_name_repetitions)]
 pub struct AutomatonGraph {
     root: Arc<Node>,

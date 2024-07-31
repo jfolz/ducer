@@ -13,7 +13,7 @@ use std::{
 /// A read-only buffer returned by Map.build and Set.build
 /// when path is ":memory:".
 /// Use to create new Map or Set instances, or write to file:
-/// 
+///
 ///     from ducer import Set
 ///     buf = Set.build([b"a", b"b"], ":memory:")
 ///     s = Set(buf)
@@ -21,7 +21,7 @@ use std::{
 ///         print(k)
 ///     with open("my.set", "wb") as f:
 ///         f.write(buf)
-#[pyclass]
+#[pyclass(subclass)]
 pub struct Buffer {
     data: Vec<u8>,
 }

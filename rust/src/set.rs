@@ -216,7 +216,7 @@ fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
 /// Further, the |, &, -, ^ operators are also not implemented,
 /// since it is not possible to specify the storage path.
 /// Use Set.union, Set.intersection, Set.difference, and Set.symmetric_difference instead.
-#[pyclass(sequence)]
+#[pyclass(sequence, subclass)]
 pub struct Set {
     inner: Arc<PySet>,
 }
@@ -226,7 +226,7 @@ impl Set {
     /// Create a Set from the given data.
     /// data can be any object that supports the buffer protocol,
     /// e.g., bytes, memoryview, mmap, etc.
-    /// 
+    ///
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
