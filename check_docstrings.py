@@ -229,7 +229,10 @@ def main():
             print()
             print("#stub")
             print(other.docstring)
-        if signatures_differ(item, other):
+        # TODO fix signature comparison for classes
+        # e.g., reference is `(data: SupportsBytes)`,
+        #            stub is `(self, data: SupportsBytes)`
+        if item.type != "class" and signatures_differ(item, other):
             print()
             print()
             print("======================================")
