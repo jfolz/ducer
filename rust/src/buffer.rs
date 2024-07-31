@@ -10,19 +10,17 @@ use std::{
     ptr,
 };
 
-/// A read-only buffer returned by `Map.build` and `Set.build`
-/// when path is set to `":memory:"`.
-/// Use to create new `Map` or `Set` instances, or write to file.
-///
-/// ```Python
-/// from ducer import Set
-/// buf = Set.build([b"a", b"b"], ":memory:")
-/// s = Set(buf)
-/// for k in s:
-///     print(k)
-/// with open("my.set", "wb") as f:
-///     f.write(buf)
-/// ```
+/// A read-only buffer returned by Map.build and Set.build
+/// when path is ":memory:".
+/// Use to create new Map or Set instances, or write to file:
+/// 
+///     from ducer import Set
+///     buf = Set.build([b"a", b"b"], ":memory:")
+///     s = Set(buf)
+///     for k in s:
+///         print(k)
+///     with open("my.set", "wb") as f:
+///         f.write(buf)
 #[pyclass]
 pub struct Buffer {
     data: Vec<u8>,

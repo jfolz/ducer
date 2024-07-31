@@ -16,6 +16,7 @@ PATTERN_SIGNATURE = re.compile(
 PATTERN_RST_PREFIX = re.compile(r":\w+:`")
 PATTERN_SHORT_REFERENCE = re.compile(r"~(\w+\.)+")
 PATTERN_SIMPLIFY_DOCSTRING = re.compile(r"[\W\s]")
+PATTERN_MAGIC_METHOD = re.compile(r"\w+\.__[a-zA-Z0-9]+__")
 
 
 @dataclass
@@ -184,10 +185,12 @@ def simplify_docstring(docstring):
 
 
 def docstrings_differ(item1, item2):
-    d1 = simplify_docstring(item1.docstring)
-    d2 = simplify_docstring(item2.docstring)
-    if d1 != d2:
-        pass
+    d1 = item1.docstring
+    d2 = item2.docstring
+    if d1 is None or d2 is None:
+        return d1 != d2
+    d1 = simplify_docstring(d1)
+    d2 = simplify_docstring(d2)
     return d1 != d2
 
 
@@ -201,9 +204,11 @@ def simplify_signature(signature):
 def signatures_differ(item1, item2):
     s1 = simplify_signature(item1.signature)
     s2 = simplify_signature(item2.signature)
-    if s1 != s2:
-        pass
     return s1 != s2
+
+
+def is_magic(name):
+    return PATTERN_MAGIC_METHOD.search(name) is not None
 
 
 def main():
@@ -220,6 +225,7 @@ def main():
             continue
         other = stub[name]
         if docstrings_differ(item, other):
+            print()
             print()
             print("#======================================")
             print(f"#{name}: reference and stub docstrings differ")
@@ -244,7 +250,30 @@ def main():
             print("stub")
             print(other.signature)
 
-    pass
+    for name, item in stub.items():
+        # workaround: don't check magic methods, Rust docstrings are not considered
+        if is_magic(name):
+            continue
+        if name not in module:
+            # workaround: attributes can't have docstrings
+            if not name.startswith("Op."):
+                print()
+                print()
+                print("#======================================")
+                print(f"#{name} missing in module!")
+            continue
+        other = module[name]
+        if docstrings_differ(item, other):
+            print()
+            print()
+            print("#======================================")
+            print(f"#{name}: stub and module docstrings differ")
+            print()
+            print("#stub")
+            print(item.docstring)
+            print()
+            print("#module")
+            print(other.docstring)
 
 
 if __name__ == "__main__":

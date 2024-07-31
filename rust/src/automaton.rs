@@ -415,17 +415,15 @@ impl Automaton for ArcNode {
 
 /// Automata can be used to efficiently apply complex search patterns
 /// to the keys of maps and sets.
-/// Use one of the classmethods `never`, `always`, `str`,
-/// or `subsequence` to create a new automaton.
-/// Add more complex behvaior on top with `starts_with`, `complement`,
-/// `intersection`, or `union`.
-/// E.g., an automaton that mathes keys that start with `b"foo"` or `b"bar"`:
-///
-/// ```Python
-/// a_foo = Automaton.str(b"foo")
-/// a_bar = Automaton.str(b"bar")
-/// a_foobar = a_foo.union(a_bar).starts_with()
-/// ```
+/// Use one of the classmethods never, always, str,
+/// or subsequence to create a new automaton.
+/// Add more complex behavior on top with starts_with, complement,
+/// intersection, or union.
+/// E.g., an automaton that matches keys that start with b"foo" or b"bar":
+/// 
+///     a_foo = Automaton.str(b"foo")
+///     a_bar = Automaton.str(b"bar")
+///     a_foobar = a_foo.union(a_bar).starts_with()
 #[pyclass(name = "Automaton")]
 #[allow(clippy::module_name_repetitions)]
 pub struct AutomatonGraph {
@@ -440,7 +438,7 @@ impl AutomatonGraph {
 
 #[pymethods]
 impl AutomatonGraph {
-    /// Create a new `Automaton` that never matches.
+    /// Create a new Automaton that never matches.
     #[classmethod]
     fn never(_cls: &Bound<'_, PyType>) -> Self {
         Self {
@@ -448,7 +446,7 @@ impl AutomatonGraph {
         }
     }
 
-    /// Create a new `Automaton` that always matches.
+    /// Create a new Automaton that always matches.
     #[classmethod]
     fn always(_cls: &Bound<'_, PyType>) -> Self {
         Self {
@@ -456,7 +454,7 @@ impl AutomatonGraph {
         }
     }
 
-    /// Create a new `Automaton` that matches `str` exactly.
+    /// Create a new Automaton that matches str exactly.
     #[classmethod]
     fn str(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {
@@ -464,8 +462,8 @@ impl AutomatonGraph {
         }
     }
 
-    /// Create a new `Automaton` that subsequences matches `str`.
-    /// E.g., `b"bd"` matches the key `b"abcde"`.
+    /// Create a new Automaton that subsequences matches str.
+    /// E.g., b"bd" matches the key b"abcde".
     #[classmethod]
     fn subsequence(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {
@@ -473,26 +471,24 @@ impl AutomatonGraph {
         }
     }
 
-    /// Modify this automaton to match any key that starts with a prefix
-    /// that would previously match, e.g., if `self` matched `b"abc"`,
-    /// it will now match `b"abcde"`.
-    /// If `self` previous
-    /// Returns `self` to allow chaining with other methods.
+    /// Modify this automaton to match any key that starts with a prefix that previously matched,
+    /// e.g., if self matched b"abc", it will now match b"abcde".
+    /// Returns self to allow chaining with other methods.
     fn starts_with(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.root = Arc::new(Node::StartsWith(slf.root.clone()));
         slf
     }
 
     /// Modify this automaton to match any key that would previously not match.
-    /// Returns `self` to allow chaining with other methods.
+    /// Returns self to allow chaining with other methods.
     fn complement(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.root = Arc::new(Node::Complement(slf.root.clone()));
         slf
     }
 
-    /// Modify this automaton to match any key that both `self` and `other` matches.
-    /// `other` must be an instance of `Automaton`.
-    /// Returns `self` to allow chaining with other methods.
+    /// Modify this automaton to match any key that both self and other matches.
+    /// other must be an instance of Automaton.
+    /// Returns self to allow chaining with other methods.
     fn intersection<'py>(
         mut slf: PyRefMut<'py, Self>,
         other: &AutomatonGraph,
@@ -501,9 +497,9 @@ impl AutomatonGraph {
         slf
     }
 
-    /// Modify this automaton to match any key that either `self` or `other` matches.
-    /// `other` must be an instance of `Automaton`.
-    /// Returns `self` to allow chaining with other methods.
+    /// Modify this automaton to match any key that either self or other matches.
+    /// other must be an instance of Automaton.
+    /// Returns self to allow chaining with other methods.
     fn union<'py>(mut slf: PyRefMut<'py, Self>, other: &AutomatonGraph) -> PyRefMut<'py, Self> {
         slf.root = Arc::new(Node::Union((slf.root.clone(), other.root.clone())));
         slf

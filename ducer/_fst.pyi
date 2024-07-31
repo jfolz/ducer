@@ -22,7 +22,11 @@ class Buffer:
 
     def __buffer__(self, flags): ...
 
-    def __release_buffer__(self, buffer): ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
+        ...
 
 
 @final
@@ -335,7 +339,7 @@ class Map:
         present more than once.
         If path is ":memory:", returns a Buffer containing the map data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -347,7 +351,7 @@ class Map:
         present more than once.
         If path is ":memory:", returns a Buffer containing the map data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -362,7 +366,7 @@ class Map:
         present more than once.
         If path is ":memory:", returns a Buffer containing the map data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -374,7 +378,7 @@ class Map:
         present more than once.
         If path is ":memory:", returns a Buffer containing the map data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -439,7 +443,7 @@ class Set:
         Build a Set from an iterable of bytes
         and write it to the given path.
         If path is ":memory:", returns a Buffer containing the set data.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -581,7 +585,7 @@ class Set:
         others must be instances of Set.
         If path is ":memory:", returns a Buffer containing the set data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -591,7 +595,7 @@ class Set:
         others must be instances of Set.
         If path is ":memory:", returns a Buffer containing the set data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -604,7 +608,7 @@ class Set:
         others must be instances of Set.
         If path is ":memory:", returns a Buffer containing the set data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...
 
@@ -614,6 +618,6 @@ class Set:
         others must be instances of Set.
         If path is ":memory:", returns a Buffer containing the set data
         instead of writing to path.
-        Path can be str or Path.
+        path can be str or Path.
         """
         ...

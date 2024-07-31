@@ -176,9 +176,46 @@ fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
     builder
 }
 
-/// An immutable set of `bytes` keys, based on finite-state-transducers.
-/// Typically uses a fraction of the memory as the builtin `set`
-/// and can be streamed from a file.
+/// An immutable set of bytes keys, based on finite-state-transducers.
+/// Typically uses a fraction of the memory as the builtin set and can be streamed from a file.
+///
+/// data can be any object that supports the buffer protocol,
+/// e.g., Buffer, bytes, memoryview, mmap, etc.
+/// Use Map.build to create suitable data.
+///
+/// Important: data needs to be contiguous.
+///
+/// To the extent that it's feasible, ducer sets are intended to be direct replacements for the builtin set.
+/// For s, o: Set, and k: bytes, the following works as intended:
+///
+///     k in s
+///     s == o
+///     len(s)
+///     for k in s:
+///         pass
+///     s.isdisjoint(o)
+///     s.issubset(o)
+///     s <= o  # subset
+///     s < o  # proper subset
+///     s.issuperset(o)
+///     s >= o  # superset
+///     s > o  # proper superset
+///
+/// Since sets are immutable, the following are **not implemented**:
+///
+/// - add
+/// - clear
+/// - difference_update, -=
+/// - discard
+/// - intersection_update, &=
+/// - pop
+/// - remove
+/// - symmetric_difference_update, ^=
+/// - update, |=
+///
+/// Further, the |, &, -, ^ operators are also not implemented,
+/// since it is not possible to specify the storage path.
+/// Use Set.union, Set.intersection, Set.difference, and Set.symmetric_difference instead.
 #[pyclass(sequence)]
 pub struct Set {
     inner: Arc<PySet>,
@@ -186,10 +223,11 @@ pub struct Set {
 
 #[pymethods]
 impl Set {
-    /// Create a `Set` from the given data.
-    /// `data` can be any object that supports the buffer protocol,
-    /// e.g., `bytes`, `memoryview`, `mmap`, etc.
-    /// Important: `data` needs to be contiguous.
+    /// Create a Set from the given data.
+    /// data can be any object that supports the buffer protocol,
+    /// e.g., bytes, memoryview, mmap, etc.
+    /// 
+    /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
         let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
@@ -200,15 +238,15 @@ impl Set {
         Ok(Self { inner })
     }
 
-    /// Since `Set` is immutable, returns self.
+    /// Since sets are immutable, returns self.
     fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
-    /// Build a Set from an iterable of `bytes`
+    /// Build a Set from an iterable of bytes
     /// and write it to the given path.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data.
-    /// Path can be `str` or `pathlib.Path`.
+    /// If path is ":memory:", returns a Buffer containing the set data.
+    /// Path can be str or Path.
     #[classmethod]
     pub fn build(
         _cls: &Bound<'_, PyType>,
@@ -232,7 +270,7 @@ impl Set {
         }
     }
 
-    /// Implement `iter(self)`.
+    /// Implement iter(self).
     #[allow(clippy::needless_pass_by_value)]
     fn __iter__(&self) -> KeyIterator {
         KeyIteratorBuilder {
@@ -243,7 +281,7 @@ impl Set {
         .build()
     }
 
-    /// Returns whether `key` is in this set.
+    /// Returns whether key is in this set.
     fn __contains__(&self, key: &[u8]) -> bool {
         self.inner.contains(key)
     }
@@ -253,8 +291,8 @@ impl Set {
         self.inner.len()
     }
 
-    /// Returns this set equals `other`.
-    /// `other` must be `Set`.
+    /// Returns this set equals other.
+    /// other must be Set.
     fn __eq__(&self, other: &Set) -> bool {
         self.inner.len() == other.inner.len() && {
             let mut s = self.inner.stream();
@@ -273,26 +311,26 @@ impl Set {
         }
     }
 
-    /// Returns whether this set is a superset of `other`.
-    /// `other` must be `Set`.
+    /// Returns whether this set is a superset of other.
+    /// other must be Set.
     fn __ge__(&self, other: &Set) -> bool {
         self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
     }
 
-    /// Returns whether this set is a proper superset of `other`.
-    /// `other` must be `Set`.
+    /// Returns whether this set is a proper superset of other.
+    /// other must be Set.
     fn __gt__(&self, other: &Set) -> bool {
         self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
     }
 
-    /// Returns whether this set is a subset of `other`.
-    /// `other` must be `Set`.
+    /// Returns whether this set is a subset of other.
+    /// other must be Set.
     fn __le__(&self, other: &Set) -> bool {
         self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
     }
 
-    /// Returns whether this set is a proper subset of `other`.
-    /// `other` must be `Set`.
+    /// Returns whether this set is a proper subset of other.
+    /// other must be Set.
     fn __lt__(&self, other: &Set) -> bool {
         self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
     }
@@ -313,17 +351,17 @@ impl Set {
         self.inner.is_superset(other.inner.stream())
     }
 
-    /// Same as `iter(self)`.
+    /// Iterate over all keys.
     fn keys(&self) -> KeyIterator {
         self.__iter__()
     }
 
-    /// Iterate over all keys that start with `str`.
+    /// Iterate over all keys that start with str.
     /// Optionally apply range limits
-    /// `ge` (greate than or equal),
-    /// `gt` (greater than),
-    /// `le` (less than or equal),
-    /// and `lt` (less than).
+    /// ge (greater than or equal),
+    /// gt (greater than),
+    /// le (less than or equal),
+    /// and lt (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn starts_with(
         &self,
@@ -352,14 +390,14 @@ impl Set {
         .build()
     }
 
-    /// Iterate over all keys that contain the subsequence `str`.
+    /// Iterate over all keys that contain the subsequence str.
     /// Keys don't need to contain the subsequence consecutively,
-    /// e.g., `b"bd"` will match the key `b"abcde"`.
+    /// e.g., b"bd" will match the key b"abcde".
     /// Optionally apply range limits
-    /// `ge` (greate than or equal),
-    /// `gt` (greater than),
-    /// `le` (less than or equal),
-    /// and `lt` (less than).
+    /// ge (greater than or equal),
+    /// gt (greater than),
+    /// le (less than or equal),
+    /// and lt (less than).
     #[pyo3(signature = (str, ge=None, gt=None, le=None, lt=None))]
     fn subsequence(
         &self,
@@ -382,12 +420,12 @@ impl Set {
         .build()
     }
 
-    /// Iterate over all keys that match the given `Automaton`.
+    /// Iterate over all keys that match the given Automaton.
     /// Optionally apply range limits
-    /// `ge` (greate than or equal),
-    /// `gt` (greater than),
-    /// `le` (less than or equal),
-    /// and `lt` (less than).
+    /// ge (greater than or equal),
+    /// gt (greater than),
+    /// le (less than or equal),
+    /// and lt (less than).
     #[pyo3(signature = (automaton, ge=None, gt=None, le=None, lt=None))]
     fn search(
         &self,
@@ -408,11 +446,11 @@ impl Set {
     }
 
     /// Iterate over all keys with optional range limits
-    /// `ge` (greate than or equal),
-    /// `gt` (greater than),
-    /// `le` (less than or equal),
-    /// and `lt` (less than).
-    /// If no limits are given this is equivalent to `iter(self)`.
+    /// ge (greater than or equal),
+    /// gt (greater than),
+    /// le (less than or equal),
+    /// and lt (less than).
+    /// If no limits are given this is equivalent to iter(self).
     #[pyo3(signature = (ge=None, gt=None, le=None, lt=None))]
     fn range(
         &self,
@@ -429,11 +467,11 @@ impl Set {
         .build()
     }
 
-    /// Build a new set that is the union of `self` and `others`.
-    /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// Build a new set that is the union of self and others.
+    /// others must be instances of Set.
+    /// If path is ":memory:", returns a Buffer containing the set data
     /// instead of writing to path.
-    /// Path can be `str` or `pathlib.Path`.
+    /// path can be str or Path.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn union(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
@@ -442,11 +480,11 @@ impl Set {
         build_from_stream(&path, stream)
     }
 
-    /// Build a new set that is the intersection of `self` and `others`.
-    /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// Build a new set that is the intersection of self and others.
+    /// others must be instances of Set.
+    /// If path is ":memory:", returns a Buffer containing the set data
     /// instead of writing to path.
-    /// Path can be `str` or `pathlib.Path`.
+    /// path can be str or Path.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn intersection(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
@@ -455,13 +493,13 @@ impl Set {
         build_from_stream(&path, stream)
     }
 
-    /// Build a new set that is the difference between `self` and all `others`,
-    /// meaning the resulting set will contain all keys that are in `self`,
-    /// but not in `others`.
-    /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// Build a new set that is the difference between self and all others,
+    /// meaning the resulting set will contain all keys that are in self,
+    /// but not in others.
+    /// others must be instances of Set.
+    /// If path is ":memory:", returns a Buffer containing the set data
     /// instead of writing to path.
-    /// Path can be `str` or `pathlib.Path`.
+    /// path can be str or Path.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn difference(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
@@ -470,12 +508,14 @@ impl Set {
         build_from_stream(&path, stream)
     }
 
-    /// Build a new set that is the symmetric difference between `self` and `others`,
-    /// meaning the resulting set will contain all keys occur an odd number of times.
-    /// `others` must be instances of `Set`.
-    /// If path is `":memory:"`, returns a `Buffer` containing the set data
+    /// Build a new set that is the symmetric difference between self and others.
+    /// The resulting set will contain all keys that appear an odd number of times, i.e.,
+    /// if only one other set is given, it will contain all keys that are in either
+    /// self or others, but not in both.
+    /// others must be instances of Set.
+    /// If path is ":memory:", returns a Buffer containing the set data
     /// instead of writing to path.
-    /// Path can be `str` or `pathlib.Path`.
+    /// path can be str or Path.
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn symmetric_difference(
