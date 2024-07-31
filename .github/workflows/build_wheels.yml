@@ -3,6 +3,24 @@ name: Build
 on: [push, pull_request]
 
 jobs:
+  doc_consistency:
+    name: Test consistency of docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v2
+        with:
+          profile: minimal
+      - name: Install dependencies
+        run: pip install mypy
+      - name: Build package
+        run: pip install --no-cache-dir --editable .
+      - name: Run stubtest
+        run: stubtest ducer
+      - name: Run docstring check
+        run: python check_docstrings.py
   build_wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
