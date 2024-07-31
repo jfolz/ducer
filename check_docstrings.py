@@ -9,9 +9,12 @@ PATTERN_DIRECTIVE = re.compile(
     r"^(?P<indentation> *)\.\. (?P<type>\w+):: (?P<name>\w+)(?P<signature>\(.+\)(?: -> .+)?)?",
     flags=re.MULTILINE,
 )
-PATTERN_SIGNATURE = re.compile(r"^(?P<indentation> *)def (?P<name>\w+)(?P<signature>\(.+\)(?: -> .+)?):")
+PATTERN_SIGNATURE = re.compile(
+    r"^(?P<indentation> *)def (?P<name>\w+)(?P<signature>\(.+\)(?: -> .+)?):",
+    flags=re.MULTILINE,
+)
 PATTERN_RST_PREFIX = re.compile(r":\w+:`")
-PATTERN_SIMPLIFY_SIGNATURE = re.compile(r"~(\w+\.)+")
+PATTERN_SHORT_REFERENCE = re.compile(r"~(\w+\.)+")
 PATTERN_SIMPLIFY_DOCSTRING = re.compile(r"[\W\s]")
 
 
@@ -67,6 +70,19 @@ def get_reference_items():
     return {item.name: item for item in items}
 
 
+def make_stub_item_assign(prefix, node, docstring):
+    return Item(
+        indentation=None,
+        type=None,
+        name=prefix + node.targets[0].id,
+        signature=None,
+        start=None,
+        doc_start=None,
+        doc_end=None,
+        docstring=docstring,
+    )
+
+
 def make_stub_item(prefix, node):
     signature = None
     try:
@@ -98,8 +114,19 @@ def get_stub_items():
     items = []
     tree = ast.parse(pyi_content)
     todo = [("", child) for child in ast.iter_child_nodes(tree)]
+    previous_value = None
     while todo:
         prefix, node = todo.pop()
+        if prefix == "Op.":
+            pass
+        # remember orphaned values
+        if isinstance(node, ast.Expr):
+            previous_value = node.value.value
+        # handle class variables
+        if isinstance(node, ast.Assign):
+            items.append(make_stub_item_assign(prefix, node, previous_value))
+            previous_value = None
+            continue
         if not hasattr(node, "name"):
             continue
         try:
@@ -149,6 +176,7 @@ def get_module_items():
 
 
 def simplify_docstring(docstring):
+    docstring, _ = PATTERN_SHORT_REFERENCE.subn("", docstring)
     docstring, _ = PATTERN_RST_PREFIX.subn("", docstring)
     docstring, _ = PATTERN_SIMPLIFY_DOCSTRING.subn("", docstring)
     docstring = docstring.lower()
@@ -156,18 +184,26 @@ def simplify_docstring(docstring):
 
 
 def docstrings_differ(item1, item2):
-    return simplify_docstring(item1.docstring) != simplify_docstring(item2.docstring)
+    d1 = simplify_docstring(item1.docstring)
+    d2 = simplify_docstring(item2.docstring)
+    if d1 != d2:
+        pass
+    return d1 != d2
 
 
 def simplify_signature(signature):
     if signature is None:
         return None
-    signature, _ = PATTERN_SIMPLIFY_SIGNATURE.subn("", signature)
+    signature, _ = PATTERN_SHORT_REFERENCE.subn("", signature)
     return signature
 
 
 def signatures_differ(item1, item2):
-    return simplify_signature(item1.signature) != simplify_signature(item2.signature)
+    s1 = simplify_signature(item1.signature)
+    s2 = simplify_signature(item2.signature)
+    if s1 != s2:
+        pass
+    return s1 != s2
 
 
 def main():

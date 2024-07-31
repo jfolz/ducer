@@ -8,18 +8,16 @@ from pathlib import Path
 class Buffer:
     """
     A read-only buffer returned by `Map.build` and `Set.build`
-    when path is set to `":memory:"`.
-    Use to create new `Map` or `Set` instances, or write to file.
+    when path is `":memory:"`.
+    Use to create new `Map` or `Set` instances, or write to file:
 
-    ```Python
-    from ducer import Set
-    buf = Set.build([b"a", b"b"], ":memory:")
-    s = Set(buf)
-    for k in s:
-        print(k)
-    with open("my.set", "wb") as f:
-        f.write(buf)
-    ```
+        from ducer import Set
+        buf = Set.build([b"a", b"b"], ":memory:")
+        s = Set(buf)
+        for k in s:
+            print(k)
+        with open("my.set", "wb") as f:
+            f.write(buf)
     """
 
     def __buffer__(self, flags): ...
@@ -33,33 +31,40 @@ class Op:
     Conflict resolution strategies for set operations on maps.
     """
 
-    Avg = ...
+    Avg = Op()
     """
     Select average, i.e., `sum(values) // len`.
     """
-    First = ...
+
+    First = Op()
     """
     Select first value.
     """
-    Last = ...
+
+    Last = Op()
     """
     Select last value.
     """
-    Max = ...
+
+    Max = Op()
     """
     Select maximum.
     """
-    Median = ...
+
+    Median = Op()
     """
-    Select median, i.e., with `values = sorted(values)` and `mid = len // 2`
-    for odd length `values[mid]`,
+    Select median, i.e., with `values = sorted(values)` and `mid = len // 2`,
+    select `values[mid]` for odd length,
     and `(values[mid-1] + values[mid]) // 2` for even length.
     """
-    Mid = ...
+
+    Mid = Op()
     """
+
     Select middle value, i.e., `values[len // 2]`.
     """
-    Min = ...
+
+    Min = Op()
     """
     Select minimum.
     """
@@ -72,15 +77,13 @@ class Automaton:
     to the keys of maps and sets.
     Use one of the classmethods `never`, `always`, `str`,
     or `subsequence` to create a new automaton.
-    Add more complex behvaior on top with `starts_with`, `complement`,
+    Add more complex behavior on top with `starts_with`, `complement`,
     `intersection`, or `union`.
-    E.g., an automaton that mathes keys that start with `b"foo"` or `b"bar"`:
+    E.g., an automaton that matches keys that start with `b"foo"` or `b"bar"`:
 
-    ```Python
-    a_foo = Automaton.str(b"foo")
-    a_bar = Automaton.str(b"bar")
-    a_foobar = a_foo.union(a_bar).starts_with()
-    ```
+        a_foo = Automaton.str(b"foo")
+        a_bar = Automaton.str(b"bar")
+        a_foobar = a_foo.union(a_bar).starts_with()
     """
 
     @classmethod
@@ -121,11 +124,9 @@ class Automaton:
 
     def starts_with(self) -> Automaton:
         """
-        Modify this automaton to match any key that starts with a prefix
-        that would previously match, e.g., if `self` matched `b"abc"`,
-        it will now match `b"abcde"`.
-        If `self` previous
-        Returns `self` to allow chaining with other methods.
+        Modify this automaton to match any key that starts with a prefix that previously matched,
+        e.g., if self matched b"abc", it will now match b"abcde".
+        Returns self to allow chaining with other methods.
         """
         ...
 
@@ -149,34 +150,76 @@ class Automaton:
 @final
 class Map:
     """
-    An immutable map of bytes keys and non-negative integers,
-    based on finite-state-transducers.
-    Typically uses a fraction of the memory as the builtin `dict`
-    and can be streamed from a file.
+    An immutable map of bytes keys and non-negative integers, based on finite-state-transducers.
+    Typically uses a fraction of the memory as the builtin dict and can be streamed from a file.
+
+    data can be any object that supports the buffer protocol,
+    e.g., Buffer, bytes, memoryview, mmap, etc.
+    Use Map.build` to create suitable data.
+
+    Important: data needs to be contiguous.
+
+    To the extent that it's feasible, ducer maps are intended to be direct replacements for the builtin dict.
+    For m, o: Map and k: bytes, the following works as intended:
+
+        k in m
+        m == o
+        m[k]
+        m.get(k)
+        m.get(k, 42)
+        len(m)
+        for k in m:
+            pass
+        for k in m.keys():
+            pass
+        for v in m.values():
+            pass
+        for k, v in m.items():
+            pass
+
+    Since maps are immutable, the following are not implemented:
+
+    - clear
+    - fromkeys
+    - pop
+    - popitem
+    - setdefault
+    - update, |=
+
+    Further, the |, &, -, ^ operators are also not implemented,
+    since it is not possible to specify the storage path.
+    Use Map.union, Map.intersection, Map.difference, and Map.symmetric_difference instead.
     """
 
-    @classmethod
-    def build(cls, path: str | Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None:
-        """
-        Build a Map from an iterable of items `(key: bytes, value: int)`
-        and write it to the given path.
-        If path is `":memory:"`, returns a `Buffer` containing the map data.
-        Path can be `str` or `pathlib.Path`.
-        """
-        ...
-
-    def copy(self) -> Map:
-        """
-        Since `Map` is immutable, returns self.
-        """
-        ...
-
-    def __init__(self, data):
+    def __init__(self, data: SupportsBytes):
         """
         Create a `Set` from the given data.
         `data` can be any object that supports the buffer protocol,
         e.g., `bytes`, `memoryview`, `mmap`, etc.
         Important: `data` needs to be contiguous.
+        """
+        ...
+
+    @classmethod
+    def build(cls, path: str | Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None:
+        """
+        Build a map from an iterable of items (key: bytes, value: int)
+        and write it to the given path.
+        If path is ":memory:", returns a Buffer containing the map data.
+        path can be str or Path.
+
+        Hint:
+            Items can really be any sequence of length 2, but building from tuple is fastest.
+            However, avoid converting items in Python for best performance.
+            Ideally, create tuples directly, e.g., if using msgpack,
+            set use_list=False for msgpack.unpackb or msgpack.Unpacker.
+
+        """
+        ...
+
+    def copy(self) -> Map:
+        """
+        Since maps are immutable, returns self.
         """
         ...
 
@@ -236,10 +279,10 @@ class Map:
         """
         ...
 
-    def range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]:
+    def range(self, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]:
         """
         Iterate over all key-value items with optional range limits for the key
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
@@ -247,91 +290,91 @@ class Map:
         """
         ...
 
-    def starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]:
+    def starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]:
         """
         Iterate over all key-value items whose key starts with `str`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
         """
         ...
 
-    def subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]:
+    def subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]:
         """
         Iterate over all key-value items whose key contain the subsequence `str`.
         Keys don't need to contain the subsequence consecutively,
         e.g., `b"bd"` will match the key `b"abcde"`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
         """
         ...
 
-    def search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]:
+    def search(self, automaton: Automaton, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]:
         """
         Iterate over all key-value items whose key matches the given `Automaton`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
         """
         ...
 
-    def difference(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
+    def difference(self, path: str | Path, *others: Map, select: Op=Op.Last) -> Buffer | None:
         """
         Build a new map that is the difference between `self` and all `others`,
         meaning the resulting map will contain all keys that are in `self`,
         but not in `others`.
         `others` must be instances of `Map`.
-        `select` speficies how conflicts are resolved if keys are
+        `select` specifies how conflicts are resolved if keys are
         present more than once.
         If path is `":memory:"`, returns a `Buffer` containing the map data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
-    def intersection(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
+    def intersection(self, path: str | Path, *others: Map, select: Op=Op.Last) -> Buffer | None:
         """
         Build a new map that is the intersection of `self` and `others`.
         `others` must be instances of `Map`.
-        `select` speficies how conflicts are resolved if keys are
+        `select` specifies how conflicts are resolved if keys are
         present more than once.
         If path is `":memory:"`, returns a `Buffer` containing the map data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
-    def symmetric_difference(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
+    def symmetric_difference(self, path: str | Path, *others: Map, select: Op=Op.Last) -> Buffer | None:
         """
         Build a new map that is the symmetric difference between `self` and `others`.
         The resulting map will contain all keys that appear an odd number of times, i.e.,
         if only one other map is given, it will contain all keys that are in either
         `self` or `others`, but not in both.
         `others` must be instances of `Map`.
-        `select` speficies how conflicts are resolved if keys are
+        `select` specifies how conflicts are resolved if keys are
         present more than once.
         If path is `":memory:"`, returns a `Buffer` containing the map data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
-    def union(self, path: str | Path, *others: Map, select: Op = Op.Last) -> Buffer | None:
+    def union(self, path: str | Path, *others: Map, select: Op=Op.Last) -> Buffer | None:
         """
         Build a new map that is the union of `self` and `others`.
         `others` must be instances of `Map`.
-        `select` speficies how conflicts are resolved if keys are
+        `select` specifies how conflicts are resolved if keys are
         present more than once.
         If path is `":memory:"`, returns a `Buffer` containing the map data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
@@ -339,10 +382,56 @@ class Map:
 @final
 class Set:
     """
-    An immutable set of `bytes` keys, based on finite-state-transducers.
-    Typically uses a fraction of the memory as the builtin `set`
-    and can be streamed from a file.
+    An immutable set of bytes keys, based on finite-state-transducers.
+    Typically uses a fraction of the memory as the builtin set and can be streamed from a file.
+
+    data can be any object that supports the buffer protocol,
+    e.g., Buffer, bytes, memoryview, mmap, etc.
+    Use Map.build to create suitable data.
+
+    Important: data needs to be contiguous.
+
+    To the extent that it's feasible, ducer sets are intended to be direct replacements for the builtin set.
+    For s, o: Set, and k: bytes, the following works as intended:
+
+        k in s
+        s == o
+        len(s)
+        for k in s:
+            pass
+        s.isdisjoint(o)
+        s.issubset(o)
+        s <= o  # subset
+        s < o  # proper subset
+        s.issuperset(o)
+        s >= o  # superset
+        s > o  # proper superset
+
+    Since sets are immutable, the following are **not implemented**:
+
+    - add
+    - clear
+    - difference_update, -=
+    - discard
+    - intersection_update, &=
+    - pop
+    - remove
+    - symmetric_difference_update, ^=
+    - update, |=
+
+    Further, the |, &, -, ^ operators are also not implemented,
+    since it is not possible to specify the storage path.
+    Use Set.union, Set.intersection, Set.difference, and Set.symmetric_difference instead.
     """
+
+    def __init__(self, data: SupportsBytes):
+        """
+        Create a `Set` from the given data.
+        `data` can be any object that supports the buffer protocol,
+        e.g., `bytes`, `memoryview`, `mmap`, etc.
+        Important: `data` needs to be contiguous.
+        """
+        ...
 
     @classmethod
     def build(cls, path: str | Path, iterable: Iterable[SupportsBytes]) -> Buffer | None:
@@ -350,22 +439,13 @@ class Set:
         Build a Set from an iterable of `bytes`
         and write it to the given path.
         If path is `":memory:"`, returns a `Buffer` containing the set data.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
     def copy(self) -> Set:
         """
-        Since `Set` is immutable, returns self.
-        """
-        ...
-
-    def __init__(self, data):
-        """
-        Create a `Set` from the given data.
-        `data` can be any object that supports the buffer protocol,
-        e.g., `bytes`, `memoryview`, `mmap`, etc.
-        Important: `data` needs to be contiguous.
+        Since sets are immutable, returns self.
         """
         ...
 
@@ -443,14 +523,14 @@ class Set:
 
     def keys(self) -> Iterator[bytes]:
         """
-        Same as `iter(self)`.
+        Iterate over all keys.
         """
         ...
 
-    def range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]:
+    def range(self, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]:
         """
         Iterate over all keys with optional range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
@@ -458,35 +538,35 @@ class Set:
         """
         ...
 
-    def starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]:
+    def starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]:
         """
         Iterate over all keys that start with `str`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
         """
         ...
 
-    def subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]:
+    def subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]:
         """
         Iterate over all keys that contain the subsequence `str`.
         Keys don't need to contain the subsequence consecutively,
         e.g., `b"bd"` will match the key `b"abcde"`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
         """
         ...
 
-    def search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]:
+    def search(self, automaton: Automaton, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]:
         """
         Iterate over all keys that match the given `Automaton`.
         Optionally apply range limits
-        `ge` (greate than or equal),
+        `ge` (greater than or equal),
         `gt` (greater than),
         `le` (less than or equal),
         and `lt` (less than).
@@ -501,7 +581,7 @@ class Set:
         `others` must be instances of `Set`.
         If path is `":memory:"`, returns a `Buffer` containing the set data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
@@ -511,7 +591,7 @@ class Set:
         `others` must be instances of `Set`.
         If path is `":memory:"`, returns a `Buffer` containing the set data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
@@ -521,11 +601,10 @@ class Set:
         The resulting set will contain all keys that appear an odd number of times, i.e.,
         if only one other set is given, it will contain all keys that are in either
         `self` or `others`, but not in both.
-        meaning the resulting set will contain all keys occur an odd number of times.
-        `others` must be instances of `Set`.
+        others must be instances of Set.
         If path is `":memory:"`, returns a `Buffer` containing the set data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...
 
@@ -535,6 +614,6 @@ class Set:
         `others` must be instances of `Set`.
         If path is `":memory:"`, returns a `Buffer` containing the set data
         instead of writing to path.
-        Path can be `str` or `pathlib.Path`.
+        Path can be `str` or `Path`.
         """
         ...

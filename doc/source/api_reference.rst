@@ -59,8 +59,7 @@ API reference
 .. class:: Buffer
 
     A read-only buffer returned by :meth:`Map.build` and :meth:`Set.build` when :class:`~pathlib.Path` is ``":memory:"``.
-    Use to create new :class:`Map` or :class:`Set` instances, or write to file.
-    ::
+    Use to create new :class:`Map` or :class:`Set` instances, or write to file::
 
         from ducer import Set
         buf = Set.build([b"a", b"b"], ":memory:")
@@ -117,8 +116,8 @@ API reference
     .. classmethod:: build(cls, path: str | ~pathlib.Path, iterable: Iterable[Tuple[SupportsBytes, SupportsInt]]) -> Buffer | None
 
         Build a map from an iterable of items ``(key: bytes, value: int)`` and write it to the given path.
-        If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data.
-        :class:`~pathlib.Path` can be :class:`str` or :class:`~pathlib.Path`.
+        If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the map data.
+        ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
         .. hint::
             Items can really be any sequence of length 2, but building from :class:`tuple` is fastest.
@@ -128,7 +127,7 @@ API reference
 
     .. method:: copy(self) -> Map
 
-        Since :class:`Map` is immutable, returns self.
+        Since maps are immutable, returns self.
 
     .. method:: get(self, key, default=None) -> int | None
 
@@ -146,7 +145,7 @@ API reference
 
         Iterate over all key-value items.
 
-    .. method:: range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+    .. method:: range(self, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
         Iterate over all key-value items with optional range limits for the key
         ``ge`` (greater than or equal),
@@ -155,7 +154,7 @@ API reference
         and ``lt`` (less than).
         If no limits are given this is equivalent to ``iter(self)``.
 
-    .. method:: starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+    .. method:: starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
         Iterate over all key-value items whose key starts with :class:`str`.
         Optionally apply range limits
@@ -164,7 +163,7 @@ API reference
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+    .. method:: subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
         Iterate over all key-value items whose key contain the subsequence :class:`str`.
         Keys don't need to contain the subsequence consecutively,
@@ -175,7 +174,7 @@ API reference
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[Tuple[bytes, int]]
+    .. method:: search(self, automaton: Automaton, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
         Iterate over all key-value items whose key matches the given ``Automaton``.
         Optionally apply range limits
@@ -184,7 +183,7 @@ API reference
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: difference(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
+    .. method:: difference(self, path: str | ~pathlib.Path, *others: Map, select: Op=Op.Last) -> Buffer | None
 
         Build a new map that is the difference between ``self`` and all ``others``,
         meaning the resulting map will contain all keys that are in ``self``, but not in ``others``.
@@ -193,7 +192,7 @@ API reference
         If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         Path can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
+    .. method:: intersection(self, path: str | ~pathlib.Path, *others: Map, select: Op=Op.Last) -> Buffer | None
 
         Build a new map that is the intersection of ``self`` and ``others``.
         ``others`` must be instances of :class:`Map`.
@@ -201,17 +200,17 @@ API reference
         If :class:`~pathlib.Path` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         :class:`~pathlib.Path` can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
+    .. method:: symmetric_difference(self, path: str | ~pathlib.Path, *others: Map, select: Op=Op.Last) -> Buffer | None
 
         Build a new map that is the symmetric difference between ``self`` and ``others``.
         The resulting map will contain all keys that appear an odd number of times, i.e.,
-        if only one other set is given, it will contain all keys that are in either ``self`` or ``others``, but not in both.
+        if only one other map is given, it will contain all keys that are in either ``self`` or ``others``, but not in both.
         ``others`` must be instances of :class:`Map`.
         ``select`` specifies how conflicts are resolved if keys are present more than once.
         If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the map data instead of writing to path.
         ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
-    .. method:: union(self, path: str | ~pathlib.Path, *others: Map, select: Op = Op.Last) -> Buffer | None
+    .. method:: union(self, path: str | ~pathlib.Path, *others: Map, select: Op=Op.Last) -> Buffer | None
 
         Build a new map that is the union of ``self`` and ``others``.
         ``others`` must be instances of :class:`Map`.
@@ -300,9 +299,9 @@ API reference
     since it is not possible to specify the storage path.
     Use :meth:`Set.union`, :meth:`Set.intersection`, :meth:`Set.difference`, and :meth:`Set.symmetric_difference` instead.
 
-    .. classmethod:: build(cls, iterable: Iterable[SupportsBytes], path: str | ~pathlib.Path) -> Buffer | None
+    .. classmethod:: build(cls, path: str | ~pathlib.Path, iterable: Iterable[SupportsBytes]) -> Buffer | None
 
-        Build a set from an iterable of items ``key: bytes`` and write it to the given path.
+        Build a set from an iterable of :class:`bytes` and write it to the given path.
         If ``path`` is ``":memory:"``, returns a :class:`Buffer` containing the set data.
         ``path`` can be :class:`str` or :class:`~pathlib.Path`.
 
@@ -314,7 +313,7 @@ API reference
 
         Iterate over all keys.
 
-    .. method:: range(self, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
+    .. method:: range(self, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
         Iterate over all keys with optional range limits
         ``ge`` (greater than or equal),
@@ -323,16 +322,16 @@ API reference
         and ``lt`` (less than).
         If no limits are given this is equivalent to ``iter(self)``.
 
-    .. method:: starts_with(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
+    .. method:: starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
-        Iterate over all keys whose key starts with :class:`str`.
+        Iterate over all keys that start with :class:`str`.
         Optionally apply range limits
         ``ge`` (greater than or equal),
         ``gt`` (greater than),
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: subsequence(self, str: bytes, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
+    .. method:: subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
         Iterate over all keys that contain the subsequence :class:`str`.
         Keys don't need to contain the subsequence consecutively,
@@ -343,7 +342,7 @@ API reference
         ``le`` (less than or equal),
         and ``lt`` (less than).
 
-    .. method:: search(self, automaton: Automaton, ge: bytes | None = None, gt: bytes | None = None, le: bytes | None = None, lt: bytes | None = None) -> Iterator[bytes]
+    .. method:: search(self, automaton: Automaton, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
         Iterate over all keys that match the given ``Automaton``.
         Optionally apply range limits
