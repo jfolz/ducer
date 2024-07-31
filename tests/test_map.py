@@ -121,6 +121,13 @@ def test_map_len_mmap(tmp_path):
         assert len(m) == 2
 
 
+def test_map_contains():
+    m = create_map()
+    for k in DICT12:
+        assert k in m
+    assert K3 not in m
+
+
 def test_map_getitem_contained():
     m = create_map()
     for k, v in DICT12.items():

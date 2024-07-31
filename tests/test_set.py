@@ -101,6 +101,13 @@ def test_set_len_mmap(tmp_path):
         assert len(m) == 2
 
 
+def test_set_contains():
+    m = create_set()
+    for k in SET12:
+        assert k in m
+    assert K3 not in m
+
+
 def test_set_iter():
     m = create_set()
     for k1, k2 in zip(m, sorted(SET12)):
