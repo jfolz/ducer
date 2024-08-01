@@ -127,15 +127,13 @@ impl<T: Element> PyBufferRef<T> {
 
 impl<T: Element> AsRef<[T]> for PyBufferRef<T> {
     fn as_ref(&self) -> &[T] {
+        let ptr = self.view.buf_ptr() as *const T;
+        // Check that the pointer is properly aligned
+        assert!(
+            (ptr as usize) % std::mem::align_of::<T>() == 0,
+            "PyBuffer pointer is not properly aligned"
+        );
         unsafe {
-            let ptr = self.view.buf_ptr() as *const T;
-
-            // Check if the pointer is properly aligned
-            assert!(
-                (ptr as usize) % std::mem::align_of::<T>() == 0,
-                "PyBuffer pointer is not properly aligned"
-            );
-
             // Safety:
             // We have to assume that the `PyBuffer` is implemented correctly, so
             // - `ptr` is a valid pointer
