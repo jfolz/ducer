@@ -115,10 +115,14 @@ You can, e.g., use the builtin
 ```Python
 with open("path/to/my.map", "rb") as f:
     mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-    m = ducer.Map(mm)
+m = ducer.Map(mm)
 ```
 
-High compression ratios can, however, allow storing maps entirely in memory.
+Note that you can safely close the file once the
+[`mmap`](https://docs.python.org/3/library/mmap.html#mmap.mmap) is created.
+See [mmap(2)](https://www.man7.org/linux/man-pages/man2/mmap.2.html) for details.
+
+Thanks to high compression ratios, pre-loading maps entirely into memory can be feasible.
 In our experience, at least for local SSD storage, performance is virtually
 identical, expect pre-loading data takes extra time.
 Pre-loading can still make sense though, e.g., with networked storage.
