@@ -370,4 +370,5 @@ m.search(a)
 
 ## Acknowledgements
 
-Ducer is supported by the [SustainML](https://sustainml.eu/) project.
+Ducer is supported by the [Albatross](https://albatross.dfki.de) and
+[SustainML](https://sustainml.eu/) projects.
