@@ -109,12 +109,8 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.9.0
       - name: Create Github Release
-        uses: actions/create-release@v1
-        id: create_release
+        uses: ncipollo/release-action@v1.14.0
         with:
+          artifacts: dist/*
           draft: false
           prerelease: false
-          release_name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
