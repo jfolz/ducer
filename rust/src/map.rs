@@ -24,9 +24,9 @@ use crate::buffer::{Buffer, PyBufferRef};
 
 type PyMap = fst::Map<PyBufferRef<u8>>;
 
-type ItemStream<'f> = Box<dyn for<'a> Streamer<'a, Item = (&'a [u8], u64)> + Send + 'f>;
-type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
-type ValueStream<'f> = Box<dyn for<'a> Streamer<'a, Item = u64> + Send + 'f>;
+type ItemStream<'f> = Box<dyn for<'a> Streamer<'a, Item = (&'a [u8], u64)> + Send + Sync + 'f>;
+type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + Sync + 'f>;
+type ValueStream<'f> = Box<dyn for<'a> Streamer<'a, Item = u64> + Send + Sync + 'f>;
 
 #[pyclass(name = "MapItemIterator")]
 #[self_referencing]
@@ -220,7 +220,7 @@ fn insert_pyobject<W: io::Write>(
 fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyResult<W> {
     let mut builder =
         MapBuilder::new(buf).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
-    let iterator = iterable.iter()?;
+    let iterator = iterable.try_iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
         insert_pyobject(&obj, &mut builder)?;
@@ -351,7 +351,7 @@ impl Map {
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
-        let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
+        let view: PyBuffer<u8> = PyBuffer::get(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner = Arc::new(
             fst::Map::new(slice).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?,

@@ -27,7 +27,7 @@ const BUFSIZE: usize = 4 * 1024 * 1024;
 
 type PySet = fst::Set<PyBufferRef<u8>>;
 
-type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + 'f>;
+type KeyStream<'f> = Box<dyn for<'a> Streamer<'a, Item = &'a [u8]> + Send + Sync + 'f>;
 
 #[pyclass(name = "SetIterator")]
 #[self_referencing]
@@ -142,7 +142,7 @@ where
 fn fill_from_iterable<W: io::Write>(iterable: &Bound<'_, PyAny>, buf: W) -> PyResult<W> {
     let mut builder =
         SetBuilder::new(buf).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
-    let iterator = iterable.iter()?;
+    let iterator = iterable.try_iter()?;
     for maybe_obj in iterator {
         let obj = maybe_obj?;
         let key = obj.extract::<&[u8]>()?;
@@ -230,7 +230,7 @@ impl Set {
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
-        let view: PyBuffer<u8> = PyBuffer::get_bound(data)?;
+        let view: PyBuffer<u8> = PyBuffer::get(data)?;
         let slice = PyBufferRef::new(view)?;
         let inner = Arc::new(
             fst::Set::new(slice).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?,

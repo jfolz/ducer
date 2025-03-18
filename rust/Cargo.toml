@@ -9,9 +9,9 @@ name = "_fst"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22.5", features = ["extension-module"] }
+pyo3 = { version = "0.24.0", features = ["extension-module"] }
 fst = "0.4.7"
-ouroboros = "0.18.4"
+ouroboros = "0.18.5"
 
 [patch.crates-io]
 fst = { git = "https://github.com/jfolz/fst.git" }
