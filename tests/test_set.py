@@ -348,6 +348,34 @@ def test_set_search_subsequence_complement():
     assert K2 in items
 
 
+def test_set_search_hamming_subsequence():
+    m = create_set(SET123)
+    a = Automaton.hamming_subsequence(b"k2", 0)
+    items = list(m.search(a))
+    assert K1 not in items
+    assert K2 in items
+    assert K3 not in items
+    a = Automaton.hamming_subsequence(b"k2", 1)
+    items = list(m.search(a))
+    assert K1 not in items
+    assert K2 in items
+    assert K3 in items
+
+
+def test_set_search_hamming_subsequence_complement():
+    m = create_set(SET123)
+    a = Automaton.hamming_subsequence(b"k2", 0).complement()
+    items = list(m.search(a))
+    assert K1 in items
+    assert K2 not in items
+    assert K3 in items
+    a = Automaton.hamming_subsequence(b"k2", 1).complement()
+    items = list(m.search(a))
+    assert K1 in items
+    assert K2 not in items
+    assert K3 not in items
+
+
 def test_set_search_starts_with():
     m = create_set(source=SET12O)
     a = Automaton.str(b"key").starts_with()

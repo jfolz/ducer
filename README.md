@@ -330,6 +330,7 @@ The following automata are available:
 - [`never`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.never)
 - [`str`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.str)
 - [`subsequence`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.subsequence)
+- [`hamming_subsequence`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.hamming_subsequence)
 - [`complement`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.complement)
 - [`starts_with`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.starts_with)
 - [`intersection`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.intersection)

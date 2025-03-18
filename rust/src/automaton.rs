@@ -109,6 +109,35 @@ fn subsequence_accept(node: &[u8], state: usize, byte: u8) -> State {
     State::Subsequence(state + usize::from(byte == node[state]))
 }
 
+#[inline]
+fn hamming_subsequence_start() -> State {
+    State::HammingSubsequence(0)
+}
+
+#[inline]
+fn hamming_subsequence_is_match(node: &(Vec<u8>, u8), state: usize) -> bool {
+    state == node.0.len()
+}
+
+#[inline]
+fn hamming_subsequence_can_match() -> bool {
+    true
+}
+
+#[inline]
+fn hamming_subsequence_will_always_match(node: &(Vec<u8>, u8), state: usize) -> bool {
+    state == node.0.len()
+}
+
+#[inline]
+fn hamming_subsequence_accept(node: &(Vec<u8>, u8), state: usize, byte: u8) -> State {
+    if state == node.0.len() {
+        return State::HammingSubsequence(state);
+    }
+    let advance = usize::from((byte ^ node.0[state]).count_ones() <= node.1.into());
+    State::HammingSubsequence(state + advance)
+}
+
 #[derive(Debug)]
 pub enum StartsWithState {
     Done,
@@ -270,6 +299,7 @@ pub enum State {
     AlwaysMatch,
     Str(Option<usize>),
     Subsequence(usize),
+    HammingSubsequence(usize),
     StartsWith(Box<StartsWithState>),
     Complement(Box<ComplementState>),
     Intersection(Box<IntersectionState>),
@@ -282,6 +312,7 @@ pub enum Node {
     AlwaysMatch,
     Str(Vec<u8>),
     Subsequence(Vec<u8>),
+    HammingSubsequence((Vec<u8>, u8)),
     StartsWith(Arc<Node>),
     Complement(Arc<Node>),
     Intersection((Arc<Node>, Arc<Node>)),
@@ -297,6 +328,7 @@ impl Automaton for Node {
             Self::AlwaysMatch => alwaysmatch_start(),
             Self::Str(_) => str_start(),
             Self::Subsequence(_) => subsequence_start(),
+            Self::HammingSubsequence(_) => hamming_subsequence_start(),
             Self::StartsWith(n) => starts_with_start(n),
             Self::Complement(n) => complement_start(n),
             Self::Intersection(n) => intersection_start(n),
@@ -310,6 +342,7 @@ impl Automaton for Node {
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_is_match(),
             (Self::Str(n), State::Str(state)) => str_is_match(n, state),
             (Self::Subsequence(n), State::Subsequence(state)) => subsequence_is_match(n, *state),
+            (Self::HammingSubsequence(n), State::HammingSubsequence(state)) => hamming_subsequence_is_match(n, *state),
             (Self::StartsWith(_), State::StartsWith(state)) => starts_with_is_match(state),
             (Self::Complement(n), State::Complement(state)) => complement_is_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_is_match(n, state),
@@ -325,6 +358,7 @@ impl Automaton for Node {
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_can_match(),
             (Self::Str(_), State::Str(state)) => str_can_match(state),
             (Self::Subsequence(_), State::Subsequence(_)) => subsequence_can_match(),
+            (Self::HammingSubsequence(_), State::HammingSubsequence(_)) => hamming_subsequence_can_match(),
             (Self::StartsWith(n), State::StartsWith(state)) => starts_with_can_match(n, state),
             (Self::Complement(n), State::Complement(state)) => complement_can_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_can_match(n, state),
@@ -341,6 +375,9 @@ impl Automaton for Node {
             (Self::Str(_), State::Str(_)) => false,
             (Self::Subsequence(n), State::Subsequence(state)) => {
                 subsequence_will_always_match(n, *state)
+            }
+            (Self::HammingSubsequence(n), State::HammingSubsequence(state)) => {
+                hamming_subsequence_will_always_match(n, *state)
             }
             (Self::StartsWith(_), State::StartsWith(state)) => starts_with_will_always_match(state),
             (Self::Complement(n), State::Complement(state)) => {
@@ -361,6 +398,9 @@ impl Automaton for Node {
             (Self::Str(n), State::Str(state)) => str_accept(n, state, byte),
             (Self::Subsequence(n), State::Subsequence(state)) => {
                 subsequence_accept(n, *state, byte)
+            }
+            (Self::HammingSubsequence(n), State::HammingSubsequence(state)) => {
+                hamming_subsequence_accept(n, *state, byte)
             }
             (Self::StartsWith(n), State::StartsWith(state)) => starts_with_accept(n, state, byte),
             (Self::Complement(n), State::Complement(state)) => complement_accept(n, state, byte),
@@ -468,6 +508,17 @@ impl AutomatonGraph {
     fn subsequence(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
         Self {
             root: Arc::new(Node::Subsequence(str.to_owned())),
+        }
+    }
+
+    /// Create a new Automaton that subsequences matches str
+    /// if bytes are within the given hamming distance.s
+    /// E.g., both b"be" and b"bf" match the key b"abceg" if distance is 1.
+    /// With distance 0, only b"be" would match.
+    #[classmethod]
+    fn hamming_subsequence(_cls: &Bound<'_, PyType>, str: &[u8], distance: u8) -> Self {
+        Self {
+            root: Arc::new(Node::HammingSubsequence((str.to_owned(), distance))),
         }
     }
 
