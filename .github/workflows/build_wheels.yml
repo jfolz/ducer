@@ -31,30 +31,25 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-12, macos-14, windows-2019]
-        arch: [x86_64, aarch64]
-        exclude:
-          - os: macos-12
-            arch: aarch64
-          - os: macos-14
+        include:
+          - os: ubuntu-latest
             arch: x86_64
-          - os: windows-2019
+          - os: ubuntu-24.04-arm
             arch: aarch64
+          - os: macos-13
+            arch: x86_64
+          - os: macos-latest
+            arch: aarch64
+          - os: windows-latest
+            arch: x86_64
     steps:
-      - name: Debug output memory and processes
-        if: runner.os == 'Linux'
-        uses: catchpoint/workflow-telemetry-action@v2
-        with:
-          job_summary: true
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3.2.0
-        with:
-          platforms: arm64
+      - name: Wait for docker to wake up on ARM
+        if: runner.os == 'Linux' && matrix.arch == 'aarch64'
+        run: while ! docker version; do sleep 1; done
       - name: Setup Rust
         if: runner.os != 'Linux'
         uses: hecrj/setup-rust-action@v2
@@ -65,14 +60,10 @@ jobs:
         run: |
           echo "CIBW_BEFORE_ALL=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal" >> $GITHUB_ENV
           echo "CARGO_HOME=/usr/local/" >> $GITHUB_ENV
-      #- name: Limit parallel build jobs with QEMU builds
-      #  if: runner.os == 'Linux' && matrix.arch == 'aarch64'
-      #  run: echo "CARGO_BUILD_JOBS=1" >> $GITHUB_ENV
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.3
+        uses: pypa/cibuildwheel@v2.23.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
-          #CIBW_CONTAINER_ENGINE: "docker; create_args: --memory=8G"
           CIBW_ENVIRONMENT_PASS_LINUX: CARGO_BUILD_JOBS CIBW_BEFORE_ALL CARGO_HOME
       - uses: actions/upload-artifact@v4
         with:
@@ -107,9 +98,9 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.11.0
+        uses: pypa/gh-action-pypi-publish@v1.12.4
       - name: Create Github Release
-        uses: ncipollo/release-action@v1.14.0
+        uses: ncipollo/release-action@v1.16.0
         with:
           artifacts: dist/*
           draft: false
