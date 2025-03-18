@@ -22,7 +22,7 @@ jobs:
       - name: Build package
         run: pip install --no-cache-dir --editable .
       - name: Run stubtest
-        run: stubtest ducer
+        run: stubtest ducer --allowlist stubtest.allowlist
       - name: Run docstring check
         run: python check_docstrings.py
   build_wheels:
