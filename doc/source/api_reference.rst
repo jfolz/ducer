@@ -24,12 +24,19 @@ API reference
 
     .. classmethod:: str(cls, str: bytes) -> Automaton
 
-        Create a new ``Automaton`` that matches :class:`str` exactly.
+        Create a new ``Automaton`` that matches ``str`` exactly.
 
     .. classmethod:: subsequence(cls, str: bytes) -> Automaton
 
-        Create a new ``Automaton`` that subsequences matches :class:`str`.
+        Create a new ``Automaton`` that subsequences matches ``str``.
         E.g., ``b"bd"`` matches the key ``b"abcde"``.
+
+    .. classmethod:: hamming_subsequence(cls, str: bytes, distance: int) -> Automaton
+
+        Create a new ``Automaton`` that subsequences matches ``str``.
+        if bytes are within the given hamming distance.
+        E.g., both ``b"be"`` and ``b"bf"`` match the key ``b"abceg"`` if distance is 1.
+        With distance 0, only ``b"be"`` would match.
 
     .. method:: complement(self) -> Automaton
 
@@ -156,7 +163,7 @@ API reference
 
     .. method:: starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
-        Iterate over all key-value items whose key starts with :class:`str`.
+        Iterate over all key-value items whose key starts with ``str``.
         Optionally apply range limits
         ``ge`` (greater than or equal),
         ``gt`` (greater than),
@@ -165,7 +172,7 @@ API reference
 
     .. method:: subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[Tuple[bytes, int]]
 
-        Iterate over all key-value items whose key contain the subsequence :class:`str`.
+        Iterate over all key-value items whose key contain the subsequence ``str``.
         Keys don't need to contain the subsequence consecutively,
         e.g., ``b"bd"`` will match the key ``b"abcde"``.
         Optionally apply range limits
@@ -324,7 +331,7 @@ API reference
 
     .. method:: starts_with(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
-        Iterate over all keys that start with :class:`str`.
+        Iterate over all keys that start with ``str``.
         Optionally apply range limits
         ``ge`` (greater than or equal),
         ``gt`` (greater than),
@@ -333,7 +340,7 @@ API reference
 
     .. method:: subsequence(self, str: bytes, ge: bytes | None=None, gt: bytes | None=None, le: bytes | None=None, lt: bytes | None=None) -> Iterator[bytes]
 
-        Iterate over all keys that contain the subsequence :class:`str`.
+        Iterate over all keys that contain the subsequence ``str``.
         Keys don't need to contain the subsequence consecutively,
         e.g., ``b"bd"`` will match the key ``b"abcde"``.
         Optionally apply range limits

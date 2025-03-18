@@ -123,7 +123,7 @@ class Automaton:
     def hamming_subsequence(cls, str: bytes, distance: int) -> Automaton:
         """
         Create a new Automaton that subsequences matches str
-        if bytes are within the given hamming distance.s
+        if bytes are within the given hamming distance.
         E.g., both b"be" and b"bf" match the key b"abceg" if distance is 1.
         With distance 0, only b"be" would match.
         """
