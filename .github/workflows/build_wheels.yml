@@ -61,7 +61,7 @@ jobs:
           echo "CIBW_BEFORE_ALL=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal" >> $GITHUB_ENV
           echo "CARGO_HOME=/usr/local/" >> $GITHUB_ENV
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23.1
+        uses: pypa/cibuildwheel@v2.23.2
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           CIBW_ENVIRONMENT_PASS_LINUX: CARGO_BUILD_JOBS CIBW_BEFORE_ALL CARGO_HOME
