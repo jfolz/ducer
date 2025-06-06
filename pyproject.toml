@@ -8,14 +8,13 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 keywords = [
     "big data",
@@ -31,9 +30,9 @@ keywords = [
     "set",
     "streaming",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
-license = { file = "LICENSE" }
+license = "MIT"
 
 [project.urls]
 Homepage = "https://github.com/jfolz/ducer"
@@ -49,9 +48,9 @@ packages = ["ducer"]
 
 [build-system]
 requires = [
-    "setuptools>=71.1.0",
-    "setuptools-rust>=1.9.0",
-    "setuptools_scm>=8.1.0",
+    "setuptools>=77.0.0",
+    "setuptools-rust>=1.11.0",
+    "setuptools-scm>=8.3.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -67,3 +66,10 @@ build-verbosity = 1
 build-frontend = "build"
 test-requires = "pytest>=8.3.1"
 test-command = "pytest {project}/tests -vv"
+
+[tool.cibuildwheel.linux]
+before-all = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
+environment = "CARGO_HOME=/usr/local/"
+
+[tool.cibuildwheel.macos]
+environment = "MACOSX_DEPLOYMENT_TARGET=10.12"
