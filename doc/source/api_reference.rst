@@ -28,12 +28,12 @@ API reference
 
     .. classmethod:: subsequence(cls, str: bytes) -> Automaton
 
-        Create a new ``Automaton`` that subsequences matches ``str``.
+        Create a new ``Automaton`` that subsequence matches ``str``.
         E.g., ``b"bd"`` matches the key ``b"abcde"``.
 
     .. classmethod:: hamming_subsequence(cls, str: bytes, distance: int) -> Automaton
 
-        Create a new ``Automaton`` that subsequences matches ``str``.
+        Create a new ``Automaton`` that subsequence matches ``str``.
         if bytes are within the given hamming distance.
         E.g., both ``b"be"`` and ``b"bf"`` match the key ``b"abceg"`` if distance is 1.
         With distance 0, only ``b"be"`` would match.
