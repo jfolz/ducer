@@ -502,7 +502,7 @@ impl AutomatonGraph {
         }
     }
 
-    /// Create a new Automaton that subsequences matches str.
+    /// Create a new Automaton that subsequence matches str.
     /// E.g., b"bd" matches the key b"abcde".
     #[classmethod]
     fn subsequence(_cls: &Bound<'_, PyType>, str: &[u8]) -> Self {
@@ -511,8 +511,8 @@ impl AutomatonGraph {
         }
     }
 
-    /// Create a new Automaton that subsequences matches str
-    /// if bytes are within the given hamming distance.s
+    /// Create a new Automaton that subsequence matches str
+    /// if bytes are within the given hamming distance.
     /// E.g., both b"be" and b"bf" match the key b"abceg" if distance is 1.
     /// With distance 0, only b"be" would match.
     #[classmethod]
