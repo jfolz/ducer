@@ -41,7 +41,7 @@ jobs:
           - os: macos-latest
             arch: arm64
           - os: windows-latest
-            arch: x86_64
+            arch: AMD64
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
