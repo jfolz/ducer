@@ -1,6 +1,5 @@
-from importlib import metadata
-
 from ._fst import *
+from ._version import __version__, __version_tuple__
 
 __all__ = (
     "Automaton",
@@ -9,9 +8,3 @@ __all__ = (
     "Op",
     "Set",
 )
-
-try:
-    __version__ = metadata.version("ducer")
-except metadata.PackageNotFoundError:
-    __version__ = "1.1.0"
-del metadata

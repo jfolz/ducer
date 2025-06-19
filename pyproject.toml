@@ -42,6 +42,11 @@ Issues = "https://github.com/jfolz/ducer/issues"
 Changelog = "https://github.com/jfolz/ducer/blob/main/CHANGELOG.md"
 
 [tool.setuptools_scm]
+version_file = "ducer/_version.py"
+version_file_template = """
+__version__ = '{version}'
+__version_tuple__ = {version_tuple}
+"""
 
 [tool.setuptools]
 packages = ["ducer"]
