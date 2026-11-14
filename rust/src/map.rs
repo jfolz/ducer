@@ -191,7 +191,7 @@ fn insert_pyobject<W: io::Write>(
     builder: &mut MapBuilder<W>,
 ) -> PyResult<()> {
     let item0;
-    let (key, val) = if let Ok(tuple) = obj.downcast::<PyTuple>() {
+    let (key, val) = if let Ok(tuple) = obj.cast::<PyTuple>() {
         let items = tuple.as_slice();
         if items.len() != 2 {
             return Err(PyErr::new::<PyTypeError, _>(
@@ -252,7 +252,7 @@ fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
 }
 
 /// Conflict resolution strategies for set operations on maps.
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum Op {
     /// Select first value.
