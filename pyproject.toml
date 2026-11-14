@@ -66,7 +66,7 @@ binding = "PyO3"
 args = ["--profile", "prod"]
 
 [tool.cibuildwheel]
-skip = "cp3[1-9][0-9]t-* *_i686 *musllinux* *-win32"
+skip = "*_i686 *musllinux* *-win32"
 build-verbosity = 1
 build-frontend = "build"
 test-requires = "pytest>=8.3.1"
