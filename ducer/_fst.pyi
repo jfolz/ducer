@@ -20,9 +20,9 @@ class Buffer:
             f.write(buf)
     """
 
-    def __buffer__(self, flags): ...
+    def __buffer__(self, flags, /): ...
 
-    def __release_buffer__(self, buffer):
+    def __release_buffer__(self, buffer, /):
         """
         Release the buffer object that exposes the underlying memory of the object.
         """
@@ -243,7 +243,7 @@ class Map:
         """
         ...
 
-    def __contains__(self, key: bytes) -> bool:
+    def __contains__(self, key: bytes, /) -> bool:
         """
         Returns whether this map contains key.
         """
@@ -256,13 +256,13 @@ class Map:
         """
         ...
 
-    def __getitem__(self, key) -> int:
+    def __getitem__(self, key, /) -> int:
         """
         Implement self[key].
         """
         ...
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other, /) -> bool:
         """
         Returns whether this map equals other.
         Other must be Map.
@@ -469,7 +469,7 @@ class Set:
         """
         ...
 
-    def __contains__(self, key: bytes) -> bool:
+    def __contains__(self, key: bytes, /) -> bool:
         """
         Returns whether key is in this set.
         """
@@ -481,35 +481,35 @@ class Set:
         """
         ...
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other, /) -> bool:
         """
         Returns this set equals other.
         other must be Set.
         """
         ...
 
-    def __gt__(self, other: Set) -> bool:
+    def __gt__(self, other: Set, /) -> bool:
         """
         Returns whether this set is a proper superset of other.
         other must be Set.
         """
         ...
 
-    def __ge__(self, other: Set) -> bool:
+    def __ge__(self, other: Set, /) -> bool:
         """
         Returns whether this set is a superset of other.
         other must be Set.
         """
         ...
 
-    def __lt__(self, other: Set) -> bool:
+    def __lt__(self, other: Set, /) -> bool:
         """
         Returns whether this set is a proper subset of other.
         other must be Set.
         """
         ...
 
-    def __le__(self, other: Set) -> bool:
+    def __le__(self, other: Set, /) -> bool:
         """
         Returns whether this set is a subset of other.
         other must be Set.
