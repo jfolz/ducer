@@ -367,6 +367,23 @@ a = a1.union(a2)
 m.search(a)
 ```
 
+### Modifying automata and thread safety
+
+Note that the methods
+[`union`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.union),
+[`intersection`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.intersection),
+[`complement`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.complement),
+and
+[`starts_with`](https://ducer.readthedocs.io/stable/api_reference.html#Automaton.starts_with)
+modify the automaton in place, i.e., they return the same object instead of
+a new automaton.
+Consider for example `c = a.union(b)`:
+`c is a` is `True`, and `a` is modified to also match `b`.
+An automaton should therefore not be reused with these manipulating operations.
+In particular, manipulating the same automaton simultaneously from multiple
+threads will raise `RuntimeError('Already borrowed')`.
+Concurrent searches with an automaton do work as intended.
+
 
 
 ## Acknowledgements

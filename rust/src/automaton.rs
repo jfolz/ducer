@@ -342,7 +342,9 @@ impl Automaton for Node {
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_is_match(),
             (Self::Str(n), State::Str(state)) => str_is_match(n, state),
             (Self::Subsequence(n), State::Subsequence(state)) => subsequence_is_match(n, *state),
-            (Self::HammingSubsequence(n), State::HammingSubsequence(state)) => hamming_subsequence_is_match(n, *state),
+            (Self::HammingSubsequence(n), State::HammingSubsequence(state)) => {
+                hamming_subsequence_is_match(n, *state)
+            }
             (Self::StartsWith(_), State::StartsWith(state)) => starts_with_is_match(state),
             (Self::Complement(n), State::Complement(state)) => complement_is_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_is_match(n, state),
@@ -358,7 +360,9 @@ impl Automaton for Node {
             (Self::AlwaysMatch, State::AlwaysMatch) => alwaysmatch_can_match(),
             (Self::Str(_), State::Str(state)) => str_can_match(state),
             (Self::Subsequence(_), State::Subsequence(_)) => subsequence_can_match(),
-            (Self::HammingSubsequence(_), State::HammingSubsequence(_)) => hamming_subsequence_can_match(),
+            (Self::HammingSubsequence(_), State::HammingSubsequence(_)) => {
+                hamming_subsequence_can_match()
+            }
             (Self::StartsWith(n), State::StartsWith(state)) => starts_with_can_match(n, state),
             (Self::Complement(n), State::Complement(state)) => complement_can_match(n, state),
             (Self::Intersection(n), State::Intersection(state)) => intersection_can_match(n, state),
@@ -464,6 +468,16 @@ impl Automaton for ArcNode {
 ///     a_foo = Automaton.str(b"foo")
 ///     a_bar = Automaton.str(b"bar")
 ///     a_foobar = a_foo.union(a_bar).starts_with()
+///
+/// Important:
+/// The methods starts_with, complement, intersection, and union modify
+/// the automaton in place, i.e., they return self instead of a new object.
+/// Consider for example c = a.union(b):
+/// Here c is a is True, and a is modified to also match b.
+/// Automata should therefore not be reused with these manipulating operations.
+/// In particular manipulating the same automaton simultaneously from multiple
+/// threads will raise RuntimeError('Already borrowed').
+/// Concurrent searches with an automaton do work as intended.
 #[pyclass(name = "Automaton", subclass)]
 #[allow(clippy::module_name_repetitions)]
 pub struct AutomatonGraph {
@@ -524,14 +538,16 @@ impl AutomatonGraph {
 
     /// Modify this automaton to match any key that starts with a prefix that previously matched,
     /// e.g., if self matched b"abc", it will now match b"abcde".
-    /// Returns self to allow chaining with other methods.
+    /// The automaton is modified in place and self is returned, not a new
+    /// Automaton, to allow chaining with other methods.
     fn starts_with(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.root = Arc::new(Node::StartsWith(slf.root.clone()));
         slf
     }
 
     /// Modify this automaton to match any key that would previously not match.
-    /// Returns self to allow chaining with other methods.
+    /// The automaton is modified in place and self is returned, not a new
+    /// Automaton, to allow chaining with other methods.
     fn complement(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.root = Arc::new(Node::Complement(slf.root.clone()));
         slf
@@ -539,7 +555,8 @@ impl AutomatonGraph {
 
     /// Modify this automaton to match any key that both self and other matches.
     /// other must be an instance of Automaton.
-    /// Returns self to allow chaining with other methods.
+    /// The automaton is modified in place and self is returned, not a new
+    /// Automaton, to allow chaining with other methods.
     fn intersection<'py>(
         mut slf: PyRefMut<'py, Self>,
         other: &AutomatonGraph,
@@ -550,7 +567,8 @@ impl AutomatonGraph {
 
     /// Modify this automaton to match any key that either self or other matches.
     /// other must be an instance of Automaton.
-    /// Returns self to allow chaining with other methods.
+    /// The automaton is modified in place and self is returned, not a new
+    /// Automaton, to allow chaining with other methods.
     fn union<'py>(mut slf: PyRefMut<'py, Self>, other: &AutomatonGraph) -> PyRefMut<'py, Self> {
         slf.root = Arc::new(Node::Union((slf.root.clone(), other.root.clone())));
         slf

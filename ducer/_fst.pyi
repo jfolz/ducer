@@ -88,6 +88,16 @@ class Automaton:
         a_foo = Automaton.str(b"foo")
         a_bar = Automaton.str(b"bar")
         a_foobar = a_foo.union(a_bar).starts_with()
+
+    Important:
+    The methods starts_with, complement, intersection, and union modify
+    the automaton in place, i.e., they return self instead of a new object.
+    Consider for example c = a.union(b):
+    Here c is a is True, and a is modified to also match b.
+    Automata should therefore not be reused with these manipulating operations.
+    In particular manipulating the same automaton simultaneously from multiple
+    threads will raise RuntimeError('Already borrowed').
+    Concurrent searches with an automaton do work as intended.
     """
 
     @classmethod
@@ -132,7 +142,8 @@ class Automaton:
     def complement(self) -> Automaton:
         """
         Modify this automaton to match any key that would previously not match.
-        Returns self to allow chaining with other methods.
+        The automaton is modified in place and self is returned, not a new
+        Automaton, to allow chaining with other methods.
         """
         ...
 
@@ -140,7 +151,8 @@ class Automaton:
         """
         Modify this automaton to match any key that starts with a prefix that previously matched,
         e.g., if self matched b"abc", it will now match b"abcde".
-        Returns self to allow chaining with other methods.
+        The automaton is modified in place and self is returned, not a new
+        Automaton, to allow chaining with other methods.
         """
         ...
 
@@ -148,7 +160,8 @@ class Automaton:
         """
         Modify this automaton to match any key that both self and other matches.
         other must be an instance of Automaton.
-        Returns self to allow chaining with other methods.
+        The automaton is modified in place and self is returned, not a new
+        Automaton, to allow chaining with other methods.
         """
         ...
 
@@ -156,7 +169,8 @@ class Automaton:
         """
         Modify this automaton to match any key that either self or other matches.
         other must be an instance of Automaton.
-        Returns self to allow chaining with other methods.
+        The automaton is modified in place and self is returned, not a new
+        Automaton, to allow chaining with other methods.
         """
         ...
 
