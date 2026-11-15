@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
-## [1.2.1] - 2026-11-14
+## [1.3.0] - 2026-11-15
 ### Added
 - Support CPython 3.15
+- Verify method for Map and Set
 ### Changed
 - Update to latest PyO3 0.30.1
+- Unwind fst panics into RuntimeErrors
+- Update to Rust 2024 edition
 
 
 ## [1.2.0] - 2025-10-10
