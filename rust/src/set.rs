@@ -21,6 +21,7 @@ use std::{
 use crate::{
     automaton::{ArcNode, AutomatonGraph},
     buffer::{Buffer, PyBufferRef},
+    fst_guard, fst_guard_py,
 };
 
 const BUFSIZE: usize = 4 * 1024 * 1024;
@@ -45,9 +46,11 @@ impl KeyIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<Cow<[u8]>> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|key| Cow::from(key.to_vec()))
+    fn __next__(&mut self) -> PyResult<Option<Cow<'_, [u8]>>> {
+        fst_guard(|| {
+            self.with_stream_mut(|stream| stream.next())
+                .map(|key| Cow::Owned(key.to_vec()))
+        })
     }
 }
 
@@ -67,9 +70,11 @@ impl AutomatonIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<Cow<[u8]>> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|key| Cow::from(key.to_vec()))
+    fn __next__(&mut self) -> PyResult<Option<Cow<'_, [u8]>>> {
+        fst_guard(|| {
+            self.with_stream_mut(|stream| stream.next())
+                .map(|key| Cow::Owned(key.to_vec()))
+        })
     }
 }
 
@@ -230,12 +235,13 @@ impl Set {
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
-        let view: PyBuffer<u8> = PyBuffer::get(data)?;
-        let slice = PyBufferRef::new(view)?;
-        let inner = Arc::new(
-            fst::Set::new(slice).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?,
-        );
-        Ok(Self { inner })
+        fst_guard_py(|| {
+            let view: PyBuffer<u8> = PyBuffer::get(data)?;
+            let slice = PyBufferRef::new(view)?;
+            let inner = fst::Set::new(slice)
+                .map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
+            Ok(Self { inner: Arc::new(inner) })
+        })
     }
 
     /// Since sets are immutable, returns self.
@@ -261,106 +267,120 @@ impl Set {
         path: PathBuf,
         iterable: &Bound<'_, PyAny>,
     ) -> PyResult<Option<Buffer>> {
-        if path == Path::new(":memory:") {
-            let buf = Vec::with_capacity(10 * (1 << 10));
-            let w = fill_from_iterable(iterable, buf)?;
-            let ret = Buffer::new(w);
-            Ok(Some(ret))
-        } else {
-            let wp = fs::OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .write(true)
-                .open(path)?;
-            let writer = BufWriter::with_capacity(BUFSIZE, wp);
-            fill_from_iterable(iterable, writer)?;
-            Ok(None)
-        }
+        fst_guard_py(|| {
+            if path == Path::new(":memory:") {
+                let buf = Vec::with_capacity(10 * (1 << 10));
+                let w = fill_from_iterable(iterable, buf)?;
+                let ret = Buffer::new(w);
+                Ok(Some(ret))
+            } else {
+                let wp = fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .open(path)?;
+                let writer = BufWriter::with_capacity(BUFSIZE, wp);
+                fill_from_iterable(iterable, writer)?;
+                Ok(None)
+            }
+        })
     }
 
     /// Implement iter(self).
     #[allow(clippy::needless_pass_by_value)]
-    fn __iter__(&self) -> KeyIterator {
-        KeyIteratorBuilder {
-            set: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |set, _| Box::new(set.stream()),
-        }
-        .build()
+    fn __iter__(&self) -> PyResult<KeyIterator> {
+        fst_guard(|| {
+            KeyIteratorBuilder {
+                set: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |set, _| Box::new(set.stream()),
+            }
+            .build()
+        })
     }
 
     /// Returns whether key is in this set.
-    fn __contains__(&self, key: &[u8]) -> bool {
-        self.inner.contains(key)
+    fn __contains__(&self, key: &[u8]) -> PyResult<bool> {
+        fst_guard(|| self.inner.contains(key))
     }
 
     /// Returns number of keys in this set.
-    fn __len__(&self) -> usize {
-        self.inner.len()
+    fn __len__(&self) -> PyResult<usize> {
+        fst_guard(|| self.inner.len())
     }
 
     /// Returns this set equals other.
     /// other must be Set.
-    fn __eq__(&self, other: &Set) -> bool {
-        self.inner.len() == other.inner.len() && {
-            let mut s = self.inner.stream();
-            let mut o = other.inner.stream();
-            loop {
-                match (s.next(), o.next()) {
-                    (Some(ks), Some(ko)) => {
-                        if ks != ko {
-                            return false;
+    fn __eq__(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() == other.inner.len() && {
+                let mut s = self.inner.stream();
+                let mut o = other.inner.stream();
+                loop {
+                    match (s.next(), o.next()) {
+                        (Some(ks), Some(ko)) => {
+                            if ks != ko {
+                                return false;
+                            }
                         }
+                        (None, None) => return true,
+                        _ => return false,
                     }
-                    (None, None) => return true,
-                    _ => return false,
                 }
             }
-        }
+        })
     }
 
     /// Returns whether this set is a superset of other.
     /// other must be Set.
-    fn __ge__(&self, other: &Set) -> bool {
-        self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
+    fn __ge__(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
+        })
     }
 
     /// Returns whether this set is a proper superset of other.
     /// other must be Set.
-    fn __gt__(&self, other: &Set) -> bool {
-        self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
+    fn __gt__(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
+        })
     }
 
     /// Returns whether this set is a subset of other.
     /// other must be Set.
-    fn __le__(&self, other: &Set) -> bool {
-        self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
+    fn __le__(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
+        })
     }
 
     /// Returns whether this set is a proper subset of other.
     /// other must be Set.
-    fn __lt__(&self, other: &Set) -> bool {
-        self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
+    fn __lt__(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
+        })
     }
 
     /// Return True if the set has no elements in common with other.
     /// Sets are disjoint if and only if their intersection is the empty set.
-    fn isdisjoint(&self, other: &Set) -> bool {
-        self.inner.is_disjoint(other.inner.stream())
+    fn isdisjoint(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| self.inner.is_disjoint(other.inner.stream()))
     }
 
     /// Test whether every element in the set is in other.
-    fn issubset(&self, other: &Set) -> bool {
-        self.inner.is_subset(other.inner.stream())
+    fn issubset(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| self.inner.is_subset(other.inner.stream()))
     }
 
     /// Test whether every element in other is in the set.
-    fn issuperset(&self, other: &Set) -> bool {
-        self.inner.is_superset(other.inner.stream())
+    fn issuperset(&self, other: &Set) -> PyResult<bool> {
+        fst_guard(|| self.inner.is_superset(other.inner.stream()))
     }
 
     /// Iterate over all keys.
-    fn keys(&self) -> KeyIterator {
+    fn keys(&self) -> PyResult<KeyIterator> {
         self.__iter__()
     }
 
@@ -378,24 +398,26 @@ impl Set {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> KeyIterator {
-        KeyIteratorBuilder {
-            set: self.inner.clone(),
-            str,
-            stream_builder: |set, str| {
-                Box::new(
-                    add_range(
-                        set.search(Str::from(str.as_ref()).starts_with()),
-                        ge,
-                        gt,
-                        le,
-                        lt,
+    ) -> PyResult<KeyIterator> {
+        fst_guard(|| {
+            KeyIteratorBuilder {
+                set: self.inner.clone(),
+                str,
+                stream_builder: |set, str| {
+                    Box::new(
+                        add_range(
+                            set.search(Str::from(str.as_ref()).starts_with()),
+                            ge,
+                            gt,
+                            le,
+                            lt,
+                        )
+                        .into_stream(),
                     )
-                    .into_stream(),
-                )
-            },
-        }
-        .build()
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all keys that contain the subsequence str.
@@ -414,18 +436,20 @@ impl Set {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> KeyIterator {
-        KeyIteratorBuilder {
-            set: self.inner.clone(),
-            str,
-            stream_builder: |set, str| {
-                Box::new(
-                    add_range(set.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
-                        .into_stream(),
-                )
-            },
-        }
-        .build()
+    ) -> PyResult<KeyIterator> {
+        fst_guard(|| {
+            KeyIteratorBuilder {
+                set: self.inner.clone(),
+                str,
+                stream_builder: |set, str| {
+                    Box::new(
+                        add_range(set.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
+                            .into_stream(),
+                    )
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all keys that match the given Automaton.
@@ -442,15 +466,17 @@ impl Set {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> AutomatonIterator {
-        AutomatonIteratorBuilder {
-            set: self.inner.clone(),
-            automaton: automaton.get(),
-            stream_builder: |set, automaton| {
-                add_range(set.search(automaton.get()), ge, gt, le, lt).into_stream()
-            },
-        }
-        .build()
+    ) -> PyResult<AutomatonIterator> {
+        fst_guard(|| {
+            AutomatonIteratorBuilder {
+                set: self.inner.clone(),
+                automaton: automaton.get(),
+                stream_builder: |set, automaton| {
+                    add_range(set.search(automaton.get()), ge, gt, le, lt).into_stream()
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all keys with optional range limits
@@ -466,13 +492,17 @@ impl Set {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> KeyIterator {
-        KeyIteratorBuilder {
-            set: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |set, _| Box::new(add_range(set.range(), ge, gt, le, lt).into_stream()),
-        }
-        .build()
+    ) -> PyResult<KeyIterator> {
+        fst_guard(|| {
+            KeyIteratorBuilder {
+                set: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |set, _| {
+                    Box::new(add_range(set.range(), ge, gt, le, lt).into_stream())
+                },
+            }
+            .build()
+        })
     }
 
     /// Build a new set that is the union of self and others.
@@ -483,9 +513,11 @@ impl Set {
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn union(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, others)?;
-        let stream = opbuilder(&sets).union();
-        build_from_stream(&path, stream)
+        fst_guard_py(|| {
+            let sets = setvec(self, others)?;
+            let stream = opbuilder(&sets).union();
+            build_from_stream(&path, stream)
+        })
     }
 
     /// Build a new set that is the intersection of self and others.
@@ -496,9 +528,11 @@ impl Set {
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn intersection(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, others)?;
-        let stream = opbuilder(&sets).intersection();
-        build_from_stream(&path, stream)
+        fst_guard_py(|| {
+            let sets = setvec(self, others)?;
+            let stream = opbuilder(&sets).intersection();
+            build_from_stream(&path, stream)
+        })
     }
 
     /// Build a new set that is the difference between self and all others,
@@ -511,9 +545,11 @@ impl Set {
     #[pyo3(signature = (path, *others))]
     #[allow(clippy::needless_pass_by_value)]
     fn difference(&self, path: PathBuf, others: &Bound<'_, PyTuple>) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, others)?;
-        let stream = opbuilder(&sets).difference();
-        build_from_stream(&path, stream)
+        fst_guard_py(|| {
+            let sets = setvec(self, others)?;
+            let stream = opbuilder(&sets).difference();
+            build_from_stream(&path, stream)
+        })
     }
 
     /// Build a new set that is the symmetric difference between self and others.
@@ -531,8 +567,10 @@ impl Set {
         path: PathBuf,
         others: &Bound<'_, PyTuple>,
     ) -> PyResult<Option<Buffer>> {
-        let sets = setvec(self, others)?;
-        let stream = opbuilder(&sets).symmetric_difference();
-        build_from_stream(&path, stream)
+        fst_guard_py(|| {
+            let sets = setvec(self, others)?;
+            let stream = opbuilder(&sets).symmetric_difference();
+            build_from_stream(&path, stream)
+        })
     }
 }

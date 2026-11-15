@@ -21,6 +21,7 @@ use std::{
 
 use crate::automaton::{ArcNode, AutomatonGraph};
 use crate::buffer::{Buffer, PyBufferRef};
+use crate::{fst_guard, fst_guard_py};
 
 type PyMap = fst::Map<PyBufferRef<u8>>;
 
@@ -44,9 +45,11 @@ impl ItemIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|(key, val)| (Cow::from(key.to_vec()), val))
+    fn __next__(&mut self) -> PyResult<Option<(Cow<'_, [u8]>, u64)>> {
+        fst_guard(|| {
+            self.with_stream_mut(|stream| stream.next())
+                .map(|(key, val)| (Cow::Owned(key.to_vec()), val))
+        })
     }
 }
 
@@ -66,9 +69,11 @@ impl KeyIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<Cow<[u8]>> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|key| Cow::from(key.to_vec()))
+    fn __next__(&mut self) -> PyResult<Option<Cow<'_, [u8]>>> {
+        fst_guard(|| {
+            self.with_stream_mut(|stream| stream.next())
+                .map(|key| Cow::Owned(key.to_vec()))
+        })
     }
 }
 
@@ -88,8 +93,8 @@ impl ValueIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<u64> {
-        self.with_stream_mut(|stream| stream.next())
+    fn __next__(&mut self) -> PyResult<Option<u64>> {
+        fst_guard(|| self.with_stream_mut(|stream| stream.next()))
     }
 }
 
@@ -109,9 +114,11 @@ impl AutomatonIterator {
         slf
     }
 
-    fn __next__(&mut self) -> Option<(Cow<[u8]>, u64)> {
-        self.with_stream_mut(|stream| stream.next())
-            .map(|(key, val)| (Cow::from(key.to_vec()), val))
+    fn __next__(&mut self) -> PyResult<Option<(Cow<'_, [u8]>, u64)>> {
+        fst_guard(|| {
+            self.with_stream_mut(|stream| stream.next())
+                .map(|(key, val)| (Cow::Owned(key.to_vec()), val))
+        })
     }
 }
 
@@ -351,12 +358,13 @@ impl Map {
     /// Important: data needs to be contiguous.
     #[new]
     fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
-        let view: PyBuffer<u8> = PyBuffer::get(data)?;
-        let slice = PyBufferRef::new(view)?;
-        let inner = Arc::new(
-            fst::Map::new(slice).map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?,
-        );
-        Ok(Self { inner })
+        fst_guard_py(|| {
+            let view: PyBuffer<u8> = PyBuffer::get(data)?;
+            let slice = PyBufferRef::new(view)?;
+            let inner = fst::Map::new(slice)
+                .map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
+            Ok(Self { inner: Arc::new(inner) })
+        })
     }
 
     /// Since maps are immutable, returns self.
@@ -388,102 +396,112 @@ impl Map {
         path: PathBuf,
         iterable: &Bound<'_, PyAny>,
     ) -> PyResult<Option<Buffer>> {
-        if path == Path::new(":memory:") {
-            let buf = Vec::with_capacity(10 * (1 << 10));
-            let w = fill_from_iterable(iterable, buf)?;
-            let ret = Buffer::new(w);
-            Ok(Some(ret))
-        } else {
-            let wp = fs::OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .write(true)
-                .open(path)?;
-            let writer = BufWriter::with_capacity(BUFSIZE, wp);
-            fill_from_iterable(iterable, writer)?;
-            Ok(None)
-        }
+        fst_guard_py(|| {
+            if path == Path::new(":memory:") {
+                let buf = Vec::with_capacity(10 * (1 << 10));
+                let w = fill_from_iterable(iterable, buf)?;
+                let ret = Buffer::new(w);
+                Ok(Some(ret))
+            } else {
+                let wp = fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .open(path)?;
+                let writer = BufWriter::with_capacity(BUFSIZE, wp);
+                fill_from_iterable(iterable, writer)?;
+                Ok(None)
+            }
+        })
     }
 
     /// Implement iter(self).
     /// Like the builtin dict, only keys are returned.
-    fn __iter__(&self) -> KeyIterator {
+    fn __iter__(&self) -> PyResult<KeyIterator> {
         self.keys()
     }
 
     /// Implement self[key].
     fn __getitem__(&self, key: &[u8]) -> PyResult<u64> {
-        if let Some(val) = self.inner.get(key) {
-            Ok(val)
-        } else {
-            Err(PyErr::new::<PyKeyError, _>(Cow::from(key.to_owned())))
+        let val = fst_guard(|| self.inner.get(key))?;
+        match val {
+            Some(val) => Ok(val),
+            None => Err(PyErr::new::<PyKeyError, _>(Cow::from(key.to_owned()))),
         }
     }
 
     /// Returns whether this map contains key.
-    fn __contains__(&self, key: &[u8]) -> bool {
-        self.inner.contains_key(key)
+    fn __contains__(&self, key: &[u8]) -> PyResult<bool> {
+        fst_guard(|| self.inner.contains_key(key))
     }
 
     /// Returns number of items in this map.
-    fn __len__(&self) -> usize {
-        self.inner.len()
+    fn __len__(&self) -> PyResult<usize> {
+        fst_guard(|| self.inner.len())
     }
 
     /// Returns whether this map equals other.
     /// Other must be Map.
-    fn __eq__(&self, other: &Map) -> bool {
-        self.inner.len() == other.inner.len() && {
-            let mut s = self.inner.stream();
-            let mut o = other.inner.stream();
-            loop {
-                match (s.next(), o.next()) {
-                    (Some(s), Some(o)) => {
-                        if s != o {
-                            return false;
+    fn __eq__(&self, other: &Map) -> PyResult<bool> {
+        fst_guard(|| {
+            self.inner.len() == other.inner.len() && {
+                let mut s = self.inner.stream();
+                let mut o = other.inner.stream();
+                loop {
+                    match (s.next(), o.next()) {
+                        (Some(s), Some(o)) => {
+                            if s != o {
+                                return false;
+                            }
                         }
+                        (None, None) => return true,
+                        _ => return false,
                     }
-                    (None, None) => return true,
-                    _ => return false,
                 }
             }
-        }
+        })
     }
 
     /// Returns the given key if present, default otherwise.
     #[pyo3(signature=(key, default=None))]
-    fn get(&self, key: &[u8], default: Option<u64>) -> Option<u64> {
-        self.inner.get(key).or(default)
+    fn get(&self, key: &[u8], default: Option<u64>) -> PyResult<Option<u64>> {
+        Ok(fst_guard(|| self.inner.get(key))?.or(default))
     }
 
     /// Iterate over all key-value items.
-    fn items(&self) -> ItemIterator {
-        ItemIteratorBuilder {
-            map: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |map, _| Box::new(map.stream()),
-        }
-        .build()
+    fn items(&self) -> PyResult<ItemIterator> {
+        fst_guard(|| {
+            ItemIteratorBuilder {
+                map: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |map, _| Box::new(map.stream()),
+            }
+            .build()
+        })
     }
 
     /// Iterate over all keys.
-    fn keys(&self) -> KeyIterator {
-        KeyIteratorBuilder {
-            map: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |map, _| Box::new(map.keys()),
-        }
-        .build()
+    fn keys(&self) -> PyResult<KeyIterator> {
+        fst_guard(|| {
+            KeyIteratorBuilder {
+                map: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |map, _| Box::new(map.keys()),
+            }
+            .build()
+        })
     }
 
     /// Iterate over all values.
-    fn values(&self) -> ValueIterator {
-        ValueIteratorBuilder {
-            map: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |map, _| Box::new(map.values()),
-        }
-        .build()
+    fn values(&self) -> PyResult<ValueIterator> {
+        fst_guard(|| {
+            ValueIteratorBuilder {
+                map: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |map, _| Box::new(map.values()),
+            }
+            .build()
+        })
     }
 
     /// Iterate over all key-value items whose key starts with str.
@@ -500,24 +518,26 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> ItemIterator {
-        ItemIteratorBuilder {
-            map: self.inner.clone(),
-            str,
-            stream_builder: |map, str| {
-                Box::new(
-                    add_range(
-                        map.search(Str::from(str.as_ref()).starts_with()),
-                        ge,
-                        gt,
-                        le,
-                        lt,
+    ) -> PyResult<ItemIterator> {
+        fst_guard(|| {
+            ItemIteratorBuilder {
+                map: self.inner.clone(),
+                str,
+                stream_builder: |map, str| {
+                    Box::new(
+                        add_range(
+                            map.search(Str::from(str.as_ref()).starts_with()),
+                            ge,
+                            gt,
+                            le,
+                            lt,
+                        )
+                        .into_stream(),
                     )
-                    .into_stream(),
-                )
-            },
-        }
-        .build()
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all key-value items whose key contain the subsequence str.
@@ -536,18 +556,20 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> ItemIterator {
-        ItemIteratorBuilder {
-            map: self.inner.clone(),
-            str,
-            stream_builder: |map, str| {
-                Box::new(
-                    add_range(map.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
-                        .into_stream(),
-                )
-            },
-        }
-        .build()
+    ) -> PyResult<ItemIterator> {
+        fst_guard(|| {
+            ItemIteratorBuilder {
+                map: self.inner.clone(),
+                str,
+                stream_builder: |map, str| {
+                    Box::new(
+                        add_range(map.search(Subsequence::from(str.as_ref())), ge, gt, le, lt)
+                            .into_stream(),
+                    )
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all key-value items whose key matches the given Automaton.
@@ -564,15 +586,17 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> AutomatonIterator {
-        AutomatonIteratorBuilder {
-            map: self.inner.clone(),
-            automaton: automaton.get(),
-            stream_builder: |map, automaton| {
-                add_range(map.search(automaton.get()), ge, gt, le, lt).into_stream()
-            },
-        }
-        .build()
+    ) -> PyResult<AutomatonIterator> {
+        fst_guard(|| {
+            AutomatonIteratorBuilder {
+                map: self.inner.clone(),
+                automaton: automaton.get(),
+                stream_builder: |map, automaton| {
+                    add_range(map.search(automaton.get()), ge, gt, le, lt).into_stream()
+                },
+            }
+            .build()
+        })
     }
 
     /// Iterate over all key-value items with optional range limits for the key
@@ -588,13 +612,17 @@ impl Map {
         gt: Option<&[u8]>,
         le: Option<&[u8]>,
         lt: Option<&[u8]>,
-    ) -> ItemIterator {
-        ItemIteratorBuilder {
-            map: self.inner.clone(),
-            str: Vec::new(),
-            stream_builder: |map, _| Box::new(add_range(map.range(), ge, gt, le, lt).into_stream()),
-        }
-        .build()
+    ) -> PyResult<ItemIterator> {
+        fst_guard(|| {
+            ItemIteratorBuilder {
+                map: self.inner.clone(),
+                str: Vec::new(),
+                stream_builder: |map, _| {
+                    Box::new(add_range(map.range(), ge, gt, le, lt).into_stream())
+                },
+            }
+            .build()
+        })
     }
 
     /// Build a new map that is the union of self and others.
@@ -612,9 +640,11 @@ impl Map {
         others: &Bound<'_, PyTuple>,
         select: Op,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
-        let stream = opbuilder(&maps).union();
-        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        fst_guard_py(|| {
+            let maps = mapvec(self, others)?;
+            let stream = opbuilder(&maps).union();
+            build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        })
     }
 
     /// Build a new map that is the intersection of self and others.
@@ -632,9 +662,11 @@ impl Map {
         others: &Bound<'_, PyTuple>,
         select: Op,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
-        let stream = opbuilder(&maps).intersection();
-        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        fst_guard_py(|| {
+            let maps = mapvec(self, others)?;
+            let stream = opbuilder(&maps).intersection();
+            build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        })
     }
 
     /// Build a new map that is the difference between self and all others,
@@ -654,9 +686,11 @@ impl Map {
         others: &Bound<'_, PyTuple>,
         select: Op,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
-        let stream = opbuilder(&maps).difference();
-        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        fst_guard_py(|| {
+            let maps = mapvec(self, others)?;
+            let stream = opbuilder(&maps).difference();
+            build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        })
     }
 
     /// Build a new map that is the symmetric difference between self and others.
@@ -677,8 +711,10 @@ impl Map {
         others: &Bound<'_, PyTuple>,
         select: Op,
     ) -> PyResult<Option<Buffer>> {
-        let maps = mapvec(self, others)?;
-        let stream = opbuilder(&maps).symmetric_difference();
-        build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        fst_guard_py(|| {
+            let maps = mapvec(self, others)?;
+            let stream = opbuilder(&maps).symmetric_difference();
+            build_from_stream(&path, stream, |posval| select_value(select.clone(), posval))
+        })
     }
 }
