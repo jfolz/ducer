@@ -364,6 +364,14 @@ impl Map {
         slf
     }
 
+    /// Recompute and compare the checksum of the fst data.
+    /// Scans over all bytes of the underlying data, so this may be an
+    /// expensive operation depending on the data size.
+    /// Returns True if the checksum matches, False otherwise.
+    fn verify(&self) -> bool {
+        self.inner.as_fst().verify().is_ok()
+    }
+
     /// Build a map from an iterable of items (key: bytes, value: int)
     /// and write it to the given path.
     /// If path is ":memory:", returns a Buffer containing the map data.

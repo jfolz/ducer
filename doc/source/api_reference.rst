@@ -148,7 +148,14 @@ API reference
 
     .. method:: copy(self) -> Map
 
-        Since maps are immutable, returns self.
+        Since maps are immutable, returns ``self``.
+
+    .. method:: verify(self) -> bool
+
+        Recompute and compare the checksum of the fst data.
+        Scans over all bytes of the underlying data, so this may be an
+        expensive operation depending on the data size.
+        Returns ``True`` if the checksum matches, ``False`` otherwise.
 
     .. method:: get(self, key, default=None) -> int | None
 
@@ -329,6 +336,13 @@ API reference
     .. method:: copy(self) -> Set
 
         Since sets are immutable, returns self.
+
+    .. method:: verify(self) -> bool
+
+        Recompute and compare the checksum of the fst data.
+        Scans over all bytes of the underlying data, so this may be an
+        expensive operation depending on the data size.
+        Returns ``True`` if the checksum matches, ``False`` otherwise.
 
     .. method:: keys(self) -> Iterator[bytes]
 

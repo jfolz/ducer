@@ -251,6 +251,15 @@ class Map:
         """
         ...
 
+    def verify(self) -> bool:
+        """
+        Recompute and compare the checksum of the fst data.
+        Scans over all bytes of the underlying data, so this may be an
+        expensive operation depending on the data size.
+        Returns True if the checksum matches, False otherwise.
+        """
+        ...
+
     def __len__(self):
         """
         Returns number of items in this map.
@@ -474,6 +483,15 @@ class Set:
     def copy(self) -> Set:
         """
         Since sets are immutable, returns self.
+        """
+        ...
+
+    def verify(self) -> bool:
+        """
+        Recompute and compare the checksum of the fst data.
+        Scans over all bytes of the underlying data, so this may be an
+        expensive operation depending on the data size.
+        Returns True if the checksum matches, False otherwise.
         """
         ...
 
