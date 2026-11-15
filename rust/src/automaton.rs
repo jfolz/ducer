@@ -166,9 +166,9 @@ const fn starts_with_is_match(state: &StartsWithState) -> bool {
 
 #[inline]
 fn starts_with_can_match(node: &Node, state: &StartsWithState) -> bool {
-    match state {
+    match &state {
         StartsWithState::Done => true,
-        StartsWithState::Running(ref inner) => node.can_match(inner),
+        StartsWithState::Running(inner) => node.can_match(inner),
     }
 }
 
@@ -184,7 +184,7 @@ const fn starts_with_will_always_match(state: &StartsWithState) -> bool {
 fn starts_with_accept(node: &Node, state: &StartsWithState, byte: u8) -> State {
     State::StartsWith(Box::new(match state {
         StartsWithState::Done => StartsWithState::Done,
-        StartsWithState::Running(ref inner) => {
+        StartsWithState::Running(inner) => {
             let next_inner = node.accept(inner, byte);
             if node.is_match(&next_inner) {
                 StartsWithState::Done
