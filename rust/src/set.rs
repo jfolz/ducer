@@ -42,7 +42,7 @@ struct KeyIterator {
 
 #[pymethods]
 impl KeyIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -66,7 +66,7 @@ struct AutomatonIterator {
 
 #[pymethods]
 impl AutomatonIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -173,7 +173,7 @@ fn setvec(first: &Set, tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PySet>>> 
     Ok(sets)
 }
 
-fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder {
+fn opbuilder(sets: &Vec<Arc<PySet>>) -> OpBuilder<'_> {
     let mut builder = OpBuilder::new();
     for set in sets {
         builder.push(set.stream());
@@ -234,18 +234,20 @@ impl Set {
     ///
     /// Important: data needs to be contiguous.
     #[new]
-    fn init(data: &Bound<'_, PyAny>) -> PyResult<Set> {
+    fn init(data: &Bound<'_, PyAny>) -> PyResult<Self> {
         fst_guard_py(|| {
             let view: PyBuffer<u8> = PyBuffer::get(data)?;
             let slice = PyBufferRef::new(view)?;
             let inner = fst::Set::new(slice)
                 .map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
-            Ok(Self { inner: Arc::new(inner) })
+            Ok(Self {
+                inner: Arc::new(inner),
+            })
         })
     }
 
     /// Since sets are immutable, returns self.
-    fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -311,7 +313,7 @@ impl Set {
 
     /// Returns this set equals other.
     /// other must be Set.
-    fn __eq__(&self, other: &Set) -> PyResult<bool> {
+    fn __eq__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() == other.inner.len() && {
                 let mut s = self.inner.stream();
@@ -333,7 +335,7 @@ impl Set {
 
     /// Returns whether this set is a superset of other.
     /// other must be Set.
-    fn __ge__(&self, other: &Set) -> PyResult<bool> {
+    fn __ge__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() >= other.inner.len() && self.inner.is_superset(other.inner.stream())
         })
@@ -341,7 +343,7 @@ impl Set {
 
     /// Returns whether this set is a proper superset of other.
     /// other must be Set.
-    fn __gt__(&self, other: &Set) -> PyResult<bool> {
+    fn __gt__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() > other.inner.len() && self.inner.is_superset(other.inner.stream())
         })
@@ -349,7 +351,7 @@ impl Set {
 
     /// Returns whether this set is a subset of other.
     /// other must be Set.
-    fn __le__(&self, other: &Set) -> PyResult<bool> {
+    fn __le__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() <= other.inner.len() && self.inner.is_subset(other.inner.stream())
         })
@@ -357,7 +359,7 @@ impl Set {
 
     /// Returns whether this set is a proper subset of other.
     /// other must be Set.
-    fn __lt__(&self, other: &Set) -> PyResult<bool> {
+    fn __lt__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() < other.inner.len() && self.inner.is_subset(other.inner.stream())
         })
@@ -365,17 +367,17 @@ impl Set {
 
     /// Return True if the set has no elements in common with other.
     /// Sets are disjoint if and only if their intersection is the empty set.
-    fn isdisjoint(&self, other: &Set) -> PyResult<bool> {
+    fn isdisjoint(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| self.inner.is_disjoint(other.inner.stream()))
     }
 
     /// Test whether every element in the set is in other.
-    fn issubset(&self, other: &Set) -> PyResult<bool> {
+    fn issubset(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| self.inner.is_subset(other.inner.stream()))
     }
 
     /// Test whether every element in other is in the set.
-    fn issuperset(&self, other: &Set) -> PyResult<bool> {
+    fn issuperset(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| self.inner.is_superset(other.inner.stream()))
     }
 

@@ -41,7 +41,7 @@ struct ItemIterator {
 
 #[pymethods]
 impl ItemIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -65,7 +65,7 @@ struct KeyIterator {
 
 #[pymethods]
 impl KeyIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -89,7 +89,7 @@ struct ValueIterator {
 
 #[pymethods]
 impl ValueIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -110,7 +110,7 @@ struct AutomatonIterator {
 
 #[pymethods]
 impl AutomatonIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -250,7 +250,7 @@ fn mapvec(first: &Map, tuple: &Bound<'_, PyTuple>) -> PyResult<Vec<Arc<PyMap>>> 
     Ok(maps)
 }
 
-fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
+fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder<'_> {
     let mut builder = OpBuilder::new();
     for map in maps {
         builder.push(map.stream());
@@ -260,7 +260,7 @@ fn opbuilder(maps: &Vec<Arc<PyMap>>) -> OpBuilder {
 
 /// Conflict resolution strategies for set operations on maps.
 #[pyclass(eq, eq_int, from_py_object)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum Op {
     /// Select first value.
     First,
@@ -357,18 +357,20 @@ impl Map {
     ///
     /// Important: data needs to be contiguous.
     #[new]
-    fn init(data: &Bound<'_, PyAny>) -> PyResult<Map> {
+    fn init(data: &Bound<'_, PyAny>) -> PyResult<Self> {
         fst_guard_py(|| {
             let view: PyBuffer<u8> = PyBuffer::get(data)?;
             let slice = PyBufferRef::new(view)?;
             let inner = fst::Map::new(slice)
                 .map_err(|err| PyErr::new::<PyRuntimeError, _>(err.to_string()))?;
-            Ok(Self { inner: Arc::new(inner) })
+            Ok(Self {
+                inner: Arc::new(inner),
+            })
         })
     }
 
     /// Since maps are immutable, returns self.
-    fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn copy(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
@@ -442,7 +444,7 @@ impl Map {
 
     /// Returns whether this map equals other.
     /// Other must be Map.
-    fn __eq__(&self, other: &Map) -> PyResult<bool> {
+    fn __eq__(&self, other: &Self) -> PyResult<bool> {
         fst_guard(|| {
             self.inner.len() == other.inner.len() && {
                 let mut s = self.inner.stream();

@@ -27,14 +27,18 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn new(data: Vec<u8>) -> Self {
-        Buffer { data }
+    pub const fn new(data: Vec<u8>) -> Self {
+        Self { data }
     }
 }
 
 #[pymethods]
 impl Buffer {
-    #[allow(clippy::cast_possible_wrap)]
+    #[allow(
+        clippy::as_ptr_cast_mut,
+        clippy::borrow_as_ptr,
+        clippy::cast_possible_wrap
+    )]
     unsafe fn __getbuffer__(
         slf: Bound<'_, Self>,
         view: *mut ffi::Py_buffer,
@@ -101,7 +105,7 @@ impl Buffer {
         }
     }
 
-    fn __len__(&self) -> usize {
+    const fn __len__(&self) -> usize {
         self.data.len()
     }
 }
@@ -130,7 +134,7 @@ impl<T: Element> AsRef<[T]> for PyBufferRef<T> {
         let ptr = self.view.buf_ptr() as *const T;
         // Check that the pointer is properly aligned
         assert!(
-            (ptr as usize) % std::mem::align_of::<T>() == 0,
+            (ptr as usize).is_multiple_of(std::mem::align_of::<T>()),
             "PyBuffer pointer is not properly aligned"
         );
         unsafe {

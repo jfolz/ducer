@@ -3,57 +3,57 @@ use pyo3::{prelude::*, types::PyType};
 use std::sync::Arc;
 
 #[inline]
-fn nevermatch_start() -> State {
+const fn nevermatch_start() -> State {
     State::NeverMatch
 }
 
 #[inline]
-fn nevermatch_is_match() -> bool {
+const fn nevermatch_is_match() -> bool {
     false
 }
 
 #[inline]
-fn nevermatch_can_match() -> bool {
+const fn nevermatch_can_match() -> bool {
     false
 }
 
 #[inline]
-fn nevermatch_will_always_match() -> bool {
+const fn nevermatch_will_always_match() -> bool {
     false
 }
 
 #[inline]
-fn nevermatch_accept() -> State {
+const fn nevermatch_accept() -> State {
     State::NeverMatch
 }
 
 #[inline]
-fn alwaysmatch_start() -> State {
+const fn alwaysmatch_start() -> State {
     State::AlwaysMatch
 }
 
 #[inline]
-fn alwaysmatch_is_match() -> bool {
+const fn alwaysmatch_is_match() -> bool {
     true
 }
 
 #[inline]
-fn alwaysmatch_can_match() -> bool {
+const fn alwaysmatch_can_match() -> bool {
     true
 }
 
 #[inline]
-fn alwaysmatch_will_always_match() -> bool {
+const fn alwaysmatch_will_always_match() -> bool {
     true
 }
 
 #[inline]
-fn alwaysmatch_accept() -> State {
+const fn alwaysmatch_accept() -> State {
     State::AlwaysMatch
 }
 
 #[inline]
-fn str_start() -> State {
+const fn str_start() -> State {
     State::Str(Some(0))
 }
 
@@ -63,7 +63,7 @@ fn str_is_match(str: &[u8], pos: &Option<usize>) -> bool {
 }
 
 #[inline]
-fn str_can_match(pos: &Option<usize>) -> bool {
+const fn str_can_match(pos: &Option<usize>) -> bool {
     pos.is_some()
 }
 
@@ -82,22 +82,22 @@ fn str_accept(str: &[u8], pos: &Option<usize>, byte: u8) -> State {
 }
 
 #[inline]
-fn subsequence_start() -> State {
+const fn subsequence_start() -> State {
     State::Subsequence(0)
 }
 
 #[inline]
-fn subsequence_is_match(node: &[u8], state: usize) -> bool {
+const fn subsequence_is_match(node: &[u8], state: usize) -> bool {
     state == node.len()
 }
 
 #[inline]
-fn subsequence_can_match() -> bool {
+const fn subsequence_can_match() -> bool {
     true
 }
 
 #[inline]
-fn subsequence_will_always_match(node: &[u8], state: usize) -> bool {
+const fn subsequence_will_always_match(node: &[u8], state: usize) -> bool {
     state == node.len()
 }
 
@@ -110,22 +110,22 @@ fn subsequence_accept(node: &[u8], state: usize, byte: u8) -> State {
 }
 
 #[inline]
-fn hamming_subsequence_start() -> State {
+const fn hamming_subsequence_start() -> State {
     State::HammingSubsequence(0)
 }
 
 #[inline]
-fn hamming_subsequence_is_match(node: &(Vec<u8>, u8), state: usize) -> bool {
+const fn hamming_subsequence_is_match(node: &(Vec<u8>, u8), state: usize) -> bool {
     state == node.0.len()
 }
 
 #[inline]
-fn hamming_subsequence_can_match() -> bool {
+const fn hamming_subsequence_can_match() -> bool {
     true
 }
 
 #[inline]
-fn hamming_subsequence_will_always_match(node: &(Vec<u8>, u8), state: usize) -> bool {
+const fn hamming_subsequence_will_always_match(node: &(Vec<u8>, u8), state: usize) -> bool {
     state == node.0.len()
 }
 
@@ -157,7 +157,7 @@ fn starts_with_start(node: &Node) -> State {
 }
 
 #[inline]
-fn starts_with_is_match(state: &StartsWithState) -> bool {
+const fn starts_with_is_match(state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
         StartsWithState::Running(_) => false,
@@ -173,7 +173,7 @@ fn starts_with_can_match(node: &Node, state: &StartsWithState) -> bool {
 }
 
 #[inline]
-fn starts_with_will_always_match(state: &StartsWithState) -> bool {
+const fn starts_with_will_always_match(state: &StartsWithState) -> bool {
     match state {
         StartsWithState::Done => true,
         StartsWithState::Running(_) => false,
@@ -313,10 +313,10 @@ pub enum Node {
     Str(Vec<u8>),
     Subsequence(Vec<u8>),
     HammingSubsequence((Vec<u8>, u8)),
-    StartsWith(Arc<Node>),
-    Complement(Arc<Node>),
-    Intersection((Arc<Node>, Arc<Node>)),
-    Union((Arc<Node>, Arc<Node>)),
+    StartsWith(Arc<Self>),
+    Complement(Arc<Self>),
+    Intersection((Arc<Self>, Arc<Self>)),
+    Union((Arc<Self>, Arc<Self>)),
 }
 
 impl Automaton for Node {
@@ -424,8 +424,8 @@ impl Automaton for Node {
 pub struct ArcNode(Arc<Node>);
 
 impl ArcNode {
-    pub fn get(&self) -> ArcNode {
-        ArcNode(self.0.clone())
+    pub fn get(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
@@ -479,7 +479,6 @@ impl Automaton for ArcNode {
 /// threads will raise RuntimeError('Already borrowed').
 /// Concurrent searches with an automaton do work as intended.
 #[pyclass(name = "Automaton", subclass)]
-#[allow(clippy::module_name_repetitions)]
 pub struct AutomatonGraph {
     root: Arc<Node>,
 }
@@ -557,10 +556,7 @@ impl AutomatonGraph {
     /// other must be an instance of Automaton.
     /// The automaton is modified in place and self is returned, not a new
     /// Automaton, to allow chaining with other methods.
-    fn intersection<'py>(
-        mut slf: PyRefMut<'py, Self>,
-        other: &AutomatonGraph,
-    ) -> PyRefMut<'py, Self> {
+    fn intersection<'py>(mut slf: PyRefMut<'py, Self>, other: &Self) -> PyRefMut<'py, Self> {
         slf.root = Arc::new(Node::Intersection((slf.root.clone(), other.root.clone())));
         slf
     }
@@ -569,7 +565,7 @@ impl AutomatonGraph {
     /// other must be an instance of Automaton.
     /// The automaton is modified in place and self is returned, not a new
     /// Automaton, to allow chaining with other methods.
-    fn union<'py>(mut slf: PyRefMut<'py, Self>, other: &AutomatonGraph) -> PyRefMut<'py, Self> {
+    fn union<'py>(mut slf: PyRefMut<'py, Self>, other: &Self) -> PyRefMut<'py, Self> {
         slf.root = Arc::new(Node::Union((slf.root.clone(), other.root.clone())));
         slf
     }

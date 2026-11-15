@@ -21,3 +21,13 @@ inherits = "release"
 strip = true         # Automatically strip symbols from the binary.
 lto = true           # Enable LTO
 codegen-units = 1    # Can enable additional optimizations
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# specifically allow these
+doc_markdown = "allow"
+future_not_send = "allow"
+module_name_repetitions = "allow"
+option_if_let_else = "allow"
+ref_option = "allow"
